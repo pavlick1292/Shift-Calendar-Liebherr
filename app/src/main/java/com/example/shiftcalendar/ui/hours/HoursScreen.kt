@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,7 +65,7 @@ fun HoursScreen(container: AppContainer, navController: NavController) {
                     IconButton(onClick = { vm.setYear(state.year - 1) }) {
                         Icon(Icons.Outlined.ChevronLeft, "Назад")
                     }
-                    Text("${state.year}", style = MaterialTheme.typography.titleMedium)
+                    Text(state.year.toString(), style = MaterialTheme.typography.titleMedium)
                     IconButton(onClick = { vm.setYear(state.year + 1) }) {
                         Icon(Icons.Outlined.ChevronRight, "Вперёд")
                     }
@@ -125,17 +124,20 @@ fun HoursScreen(container: AppContainer, navController: NavController) {
 @Composable
 private fun SummaryCard(state: HoursUiState) {
     val progress = (state.totalAll / state.norm).toFloat().coerceIn(0f, 1.2f)
+    val totalText = String.format(Locale.US, "%.0f", state.totalAll)
+    val normText = String.format(Locale.US, "%.0f", state.norm)
+
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text("%.0f".format(Locale.US, state.totalAll),
+                Text(totalText,
                     style = MaterialTheme.typography.displayLarge,
                     fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(6.dp))
                 Text("ч", style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 6.dp))
                 Spacer(Modifier.weight(1f))
-                Text("Норма: ${"%.0f".format(Locale.US, state.norm)} ч",
+                Text("Норма: $normText ч",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -149,13 +151,14 @@ private fun SummaryCard(state: HoursUiState) {
             )
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCell("Обычные", state.totalRegular, ShiftColors.WorkBlue)
-                StatCell("Ночные", state.totalNight, ShiftColors.NightViolet)
-                StatCell("Дорога", state.totalRoad, ShiftColors.RoadAmber)
+                StatCell("Обычные", state.totalRegular, ShiftColors.WorkBlue, Modifier.weight(1f))
+                StatCell("Ночные", state.totalNight, ShiftColors.NightViolet, Modifier.weight(1f))
+                StatCell("Дорога", state.totalRoad, ShiftColors.RoadAmber, Modifier.weight(1f))
             }
             if (state.totalAll > state.norm) {
+                val overText = String.format(Locale.US, "%.0f", state.totalAll - state.norm)
                 Spacer(Modifier.height(8.dp))
-                Text("Переработка: +${"%.0f".format(Locale.US, state.totalAll - state.norm)} ч",
+                Text("Переработка: +$overText ч",
                     style = MaterialTheme.typography.labelSmall,
                     color = ShiftColors.HolidayRed)
             }
@@ -164,8 +167,9 @@ private fun SummaryCard(state: HoursUiState) {
 }
 
 @Composable
-private fun StatCell(label: String, value: Double, color: Color) {
-    Column(Modifier.weight(1f)) {
+private fun StatCell(label: String, value: Double, color: Color, modifier: Modifier = Modifier) {
+    val valueText = String.format(Locale.US, "%.0f", value)
+    Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).clip(MaterialTheme.shapes.extraSmall).background(color))
             Spacer(Modifier.width(6.dp))
@@ -173,7 +177,7 @@ private fun StatCell(label: String, value: Double, color: Color) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(2.dp))
-        Text("${"%.0f".format(Locale.US, value)} ч",
+        Text("$valueText ч",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold)
     }
@@ -191,22 +195,29 @@ private fun HoursRowCard(row: HoursRow) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
             Row {
-                MiniStat("Обычные", row.hours.regularHours)
-                MiniStat("Ночные", row.hours.nightHours)
-                MiniStat("Дорога", row.hours.roadHours)
-                MiniStat("Итого", row.hours.total, bold = true)
+                MiniStat("Обычные", row.hours.regularHours, Modifier.weight(1f))
+                MiniStat("Ночные", row.hours.nightHours, Modifier.weight(1f))
+                MiniStat("Дорога", row.hours.roadHours, Modifier.weight(1f))
+                MiniStat("Итого", row.hours.total, Modifier.weight(1f), bold = true)
             }
         }
     }
 }
 
 @Composable
-private fun RowScope.MiniStat(label: String, value: Double, bold: Boolean = false) {
-    Column(Modifier.weight(1f)) {
+private fun MiniStat(
+    label: String,
+    value: Double,
+    modifier: Modifier = Modifier,
+    bold: Boolean = false
+) {
+    val valueText = String.format(Locale.US, "%.0f", value)
+    Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("${"%.0f".format(Locale.US, value)}",
+        Text(valueText,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium)
     }
 }
+

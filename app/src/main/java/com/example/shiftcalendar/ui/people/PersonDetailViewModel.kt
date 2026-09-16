@@ -11,9 +11,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 data class PersonDetailState(
     val person: Person? = null,
@@ -37,7 +38,9 @@ class PersonDetailViewModel(
         }
         val nightMap = memberships.associate { it.crewId to it.worksAtNight }
 
-        val year = LocalDate.now().year
+        val year = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault()).year
+
         val cwp = container.crewRepository.observeCrewsWithPeriods().first()
         val periodsByCrew = cwp.associate { it.crew.id to it.periods }
         val calendar = container.calendarRepository.get(year)
@@ -62,3 +65,4 @@ class PersonDetailViewModel(
         ))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PersonDetailState())
 }
+

@@ -14,12 +14,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
+private fun currentYear(): Int =
+    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
 
 data class HoursRow(val person: Person, val hours: WorkHours)
 
 data class HoursUiState(
-    val year: Int = LocalDate.now().year,
+    val year: Int = currentYear(),
     val rows: List<HoursRow> = emptyList(),
     val totalRegular: Double = 0.0,
     val totalNight: Double = 0.0,
@@ -31,7 +36,7 @@ data class HoursUiState(
 
 class HoursViewModel(private val container: AppContainer) : ViewModel() {
 
-    private val _year = MutableStateFlow(LocalDate.now().year)
+    private val _year = MutableStateFlow(currentYear())
     val year: StateFlow<Int> = _year
 
     val state: StateFlow<HoursUiState> = _year.flatMapLatest { year ->
@@ -73,3 +78,4 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
         )
     }
 }
+

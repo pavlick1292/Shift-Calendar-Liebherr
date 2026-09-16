@@ -14,7 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -33,9 +34,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,7 +45,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.shiftcalendar.di.AppContainer
 import com.example.shiftcalendar.ui.crews.vmFactory
 import com.example.shiftcalendar.ui.theme.ShiftColors
-import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,11 +120,23 @@ fun CalendarScreen(container: AppContainer) {
 
 @Composable
 private fun YearView(year: Int, crewId: Long?, vm: CalendarViewModel) {
+    // Текущий месяц/год — вычисляем один раз
+    val today = Clock.System.now()
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+        .date
+    val currentMonth = today.monthNumber
+    val currentYear = today.year
+
+    // Если показываем текущий год — скроллим к текущему месяцу
+    val initialIndex = if (year == currentYear) (currentMonth - 1) else 0
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items((1..12).toList()) { month ->
+        itemsIndexed((1..12).toList()) { index, month ->
             MonthGrid(year = year, month = month, crewId = crewId, vm = vm)
         }
         item { LegendCard() }

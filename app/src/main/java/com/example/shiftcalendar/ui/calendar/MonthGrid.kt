@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.Nightlight
@@ -55,6 +52,7 @@ fun MonthGrid(year: Int, month: Int, crewId: Long?, vm: CalendarViewModel) {
             fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(6.dp))
 
+        // Дни недели
         Row(Modifier.fillMaxWidth()) {
             listOf("Пн","Вт","Ср","Чт","Пт","Сб","Вс").forEach { d ->
                 Text(d,
@@ -66,18 +64,25 @@ fun MonthGrid(year: Int, month: Int, crewId: Long?, vm: CalendarViewModel) {
         }
         Spacer(Modifier.height(4.dp))
 
+        // Разбиваем дни на недели (по 7 ячеек)
         val days = buildMonthDays(year, month)
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            userScrollEnabled = false,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(days) { date ->
-                if (date == null) {
-                    Box(Modifier.aspectRatio(1f))
-                } else {
-                    val status = remember(date, crewId) { vm.dayStatus(date, crewId) }
-                    DayCell(date = date, status = status)
+        val weeks = days.chunked(7)
+
+        weeks.forEach { week ->
+            Row(Modifier.fillMaxWidth()) {
+                week.forEach { date ->
+                    Box(Modifier.weight(1f)) {
+                        if (date == null) {
+                            Box(Modifier.aspectRatio(1f))
+                        } else {
+                            val status = remember(date, crewId) { vm.dayStatus(date, crewId) }
+                            DayCell(date = date, status = status)
+                        }
+                    }
+                }
+                // Дополняем до 7 ячеек, если неделя неполная
+                repeat(7 - week.size) {
+                    Box(Modifier.weight(1f))
                 }
             }
         }

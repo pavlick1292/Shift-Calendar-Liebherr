@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.shiftcalendar.data.settings.AnimationSettings
@@ -53,3 +54,4 @@ class MainActivity : ComponentActivity() {
         deepLink.value = intent.data?.toString()
     }
 }
+

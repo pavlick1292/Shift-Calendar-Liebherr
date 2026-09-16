@@ -20,7 +20,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Nightlight
-import androidx.compose.material.icons.outlined.NightlightOff
+import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -284,7 +284,7 @@ private fun MemberRow(
             }
             IconButton(onClick = onToggleNight) {
                 Icon(
-                    if (m.worksAtNight) Icons.Outlined.Nightlight else Icons.Outlined.NightlightOff,
+                    if (m.worksAtNight) Icons.Outlined.Nightlight else Icons.Outlined.NightsStay,
                     "Ночная смена",
                     tint = if (m.worksAtNight) ShiftColors.NightViolet
                            else MaterialTheme.colorScheme.onSurfaceVariant

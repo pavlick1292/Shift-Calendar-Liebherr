@@ -11,10 +11,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
+private fun currentYear(): Int =
+    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
 
 data class CalendarUiState(
-    val year: Int = LocalDate.now().year,
+    val year: Int = currentYear(),
     val selectedTab: Int = 0,
     val crews: List<CrewWithPeriods> = emptyList(),
     val isLoading: Boolean = true
@@ -22,7 +28,7 @@ data class CalendarUiState(
 
 class CalendarViewModel(private val container: AppContainer) : ViewModel() {
 
-    private val _year = MutableStateFlow(LocalDate.now().year)
+    private val _year = MutableStateFlow(currentYear())
     private val _selectedTab = MutableStateFlow(0)
 
     val uiState: StateFlow<CalendarUiState> = combine(
@@ -50,3 +56,4 @@ class CalendarViewModel(private val container: AppContainer) : ViewModel() {
         return calc.dayStatusFor(date, periods)
     }
 }
+
