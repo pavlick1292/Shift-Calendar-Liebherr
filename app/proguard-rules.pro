@@ -1,0 +1,8 @@
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keepattributes *Annotation*, InnerClasses
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclasseswithmembers class kotlinx.serialization.json.** { kotlinx.serialization.KSerializer serializer(...); }
+-keep,includedescriptorclasses class com.example.shiftcalendar.**$$serializer { *; }
+-keepclassmembers class com.example.shiftcalendar.** { *** Companion; }
+-keepclasseswithmembers class com.example.shiftcalendar.** { kotlinx.serialization.KSerializer serializer(...); }
