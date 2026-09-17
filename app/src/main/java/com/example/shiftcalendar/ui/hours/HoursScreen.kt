@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,64 +61,68 @@ fun HoursScreen(container: AppContainer, navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Часы за год", fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Column {
+                        Text("Мои часы", fontWeight = FontWeight.SemiBold)
+                        if (state.hasMe) {
+                            Text(state.meName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                },
                 actions = {
                     IconButton(onClick = { vm.setYear(state.year - 1) }) {
                         Icon(Icons.Outlined.ChevronLeft, "Назад")
                     }
-                    Text(state.year.toString(), style = MaterialTheme.typography.titleMedium)
+                    Text(state.year.toString(),
+                        style = MaterialTheme.typography.titleMedium)
                     IconButton(onClick = { vm.setYear(state.year + 1) }) {
                         Icon(Icons.Outlined.ChevronRight, "Вперёд")
-                    }
-                    var menuOpen by remember { mutableStateOf(false) }
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Outlined.IosShare, "Экспорт")
-                    }
-                    DropdownMenu(menuOpen, { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Экспорт в CSV") },
-                            onClick = {
-                                menuOpen = false
-                                val file = CsvExporter.export(
-                                    context = container.appContext,
-                                    year = state.year,
-                                    rows = state.rows.map { it.person to it.hours }
-                                )
-                                CsvExporter.share(container.appContext, file)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Экспорт в PDF") },
-                            onClick = {
-                                menuOpen = false
-                                val file = PdfExporter.export(
-                                    context = container.appContext,
-                                    year = state.year,
-                                    rows = state.rows.map { it.person to it.hours },
-                                    norm = state.norm
-                                )
-                                PdfExporter.share(container.appContext, file)
-                            }
-                        )
                     }
                 }
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(16.dp, 12.dp, 16.dp, 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item { SummaryCard(state) }
-            item {
-                Text("По сотрудникам",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp))
+        if (!state.hasMe) {
+            EmptyState(modifier = Modifier.padding(padding).fillMaxSize())
+        } else {
+            LazyColumn(
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                contentPadding = PaddingValues(16.dp, 12.dp, 16.dp, 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item { SummaryCard(state) }
+                item {
+                    Text("По месяцам",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp))
+                }
+                items(state.monthly, key = { it.month }) { m ->
+                    MonthRow(m)
+                }
             }
-            items(state.rows, key = { it.person.id }) { row -> HoursRowCard(row) }
         }
+    }
+}
+
+@Composable
+private fun EmptyState(modifier: Modifier) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Не отмечен \"Это я\"",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Открой вкладку «Люди» → отметь себя галочкой «Это я» → тогда здесь появятся твои часы.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -184,40 +189,53 @@ private fun StatCell(label: String, value: Double, color: Color, modifier: Modif
 }
 
 @Composable
-private fun HoursRowCard(row: HoursRow) {
+private fun MonthRow(m: MonthHours) {
+    val monthName = listOf(
+        "Январь","Февраль","Март","Апрель","Май","Июнь",
+        "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
+    )[m.month - 1]
+
+    val totalText = String.format(Locale.US, "%.0f", m.total)
+    val regularText = String.format(Locale.US, "%.0f", m.regularHours)
+    val nightText = String.format(Locale.US, "%.0f", m.nightHours)
+
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp)) {
-            Text(row.person.fullName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold)
-            Text(row.person.profession.titleRu,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(8.dp))
-            Row {
-                MiniStat("Обычные", row.hours.regularHours, Modifier.weight(1f))
-                MiniStat("Ночные", row.hours.nightHours, Modifier.weight(1f))
-                MiniStat("Дорога", row.hours.roadHours, Modifier.weight(1f))
-                MiniStat("Итого", row.hours.total, Modifier.weight(1f), bold = true)
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(monthName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f))
+                Text("$totalText ч",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (m.total > 0) ShiftColors.WorkBlue
+                            else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (m.total > 0) {
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SmallStat("Обычные", regularText, ShiftColors.WorkBlue)
+                    if (m.nightHours > 0) {
+                        SmallStat("Ночные", nightText, ShiftColors.NightViolet)
+                    }
+                    if (m.roadHours > 0) {
+                        val roadText = String.format(Locale.US, "%.0f", m.roadHours)
+                        SmallStat("Дорога", roadText, ShiftColors.RoadAmber)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun MiniStat(
-    label: String,
-    value: Double,
-    modifier: Modifier = Modifier,
-    bold: Boolean = false
-) {
-    val valueText = String.format(Locale.US, "%.0f", value)
-    Column(modifier) {
-        Text(label, style = MaterialTheme.typography.labelSmall,
+private fun SmallStat(label: String, value: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(6.dp).clip(MaterialTheme.shapes.extraSmall).background(color))
+        Spacer(Modifier.width(4.dp))
+        Text("$label: $value",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(valueText,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium)
     }
 }
-

@@ -10,5 +10,6 @@ data class Person(
     val profession: Profession,
     val residence: Residence,
     val phone: String = "",
-    val note: String = ""
+    val note: String = "",
+    val isMe: Boolean = false
 )

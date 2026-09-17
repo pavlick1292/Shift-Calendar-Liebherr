@@ -28,11 +28,13 @@ class PeopleViewModel(private val container: AppContainer) : ViewModel() {
         container.personRepository.observePeople(),
         _filter
     ) { list, f ->
-        list.filter { p ->
-            (f.query.isBlank() || p.fullName.contains(f.query, true)) &&
-            (f.profession == null || p.profession == f.profession) &&
-            (f.residence == null || p.residence == f.residence)
-        }
+        list
+            .filter { p ->
+                (f.query.isBlank() || p.fullName.contains(f.query, true)) &&
+                (f.profession == null || p.profession == f.profession) &&
+                (f.residence == null || p.residence == f.residence)
+            }
+            .sortedByDescending { it.isMe }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setQuery(q: String) { _filter.value = _filter.value.copy(query = q) }

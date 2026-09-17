@@ -1,5 +1,5 @@
 package com.example.shiftcalendar.ui.crews
-
+import kotlinx.datetime.plus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shiftcalendar.data.db.dao.PersonWithMembership
@@ -51,6 +51,44 @@ class CrewDetailViewModel(
     fun deletePeriod(period: ShiftPeriod) {
         viewModelScope.launch {
             container.crewRepository.deletePeriod(period)
+            container.notificationScheduler.rescheduleAll()
+        }
+    }
+    /**
+     * Добавляет N вахт после последней существующей.
+     * Автоматически определяет длину вахты и отдыха по последней вахте.
+     */
+    fun continueCycle(
+        lastPeriod: ShiftPeriod,
+        count: Int,
+        isNight: Boolean,
+        allPeriods: List<ShiftPeriod>
+    ) {
+        viewModelScope.launch {
+            val shiftDays = (lastPeriod.endDate.toEpochDays() -
+                    lastPeriod.startDate.toEpochDays() + 1).toInt()
+
+            val previous = allPeriods
+                .filter { it.endDate < lastPeriod.startDate }
+                .maxByOrNull { it.endDate }
+            val restDays = if (previous != null) {
+                (lastPeriod.startDate.toEpochDays() -
+                        previous.endDate.toEpochDays() - 1).toInt().coerceAtLeast(0)
+            } else 0
+
+            val startDate = lastPeriod.endDate.plus(
+                kotlinx.datetime.DatePeriod(days = restDays + 1)
+            )
+            container.crewRepository.generatePeriodsByTemplate(
+                crewId = crewId,
+                startDate = startDate,
+                shiftDays = shiftDays,
+                restDays = restDays,
+                count = count,
+                roadBefore = 0,
+                roadAfter = 0,
+                isNight = isNight
+            )
             container.notificationScheduler.rescheduleAll()
         }
     }

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -42,7 +43,8 @@ private val bottomItems = listOf(
     BottomNavItem(Routes.CALENDAR, "Календарь", Icons.Outlined.CalendarMonth),
     BottomNavItem(Routes.CREWS, "Составы", Icons.Outlined.Groups),
     BottomNavItem(Routes.PEOPLE, "Люди", Icons.Outlined.Person),
-    BottomNavItem(Routes.HOURS, "Часы", Icons.Outlined.Schedule)
+    BottomNavItem(Routes.HOURS, "Часы", Icons.Outlined.Schedule),
+    BottomNavItem(Routes.SETTINGS, "Настройки", Icons.Outlined.Settings)
 )
 
 @Composable

@@ -1,6 +1,8 @@
 package com.example.shiftcalendar.ui.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +14,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,7 +83,7 @@ fun MonthGrid(
                                 if (crewId == null) vm.dayStatusSummary(date)
                                 else vm.dayStatusForCrew(date, crewId)
                             }
-                            DayCell(date = date, status = status)
+                            DayCell(date = date, status = status, vm = vm)
                         }
                     }
                 }
@@ -89,11 +96,16 @@ fun MonthGrid(
 }
 
 @Composable
-private fun DayCell(date: LocalDate, status: DayStatus) {
+private fun DayCell(date: LocalDate, status: DayStatus, vm: CalendarViewModel) {
     val isHoliday = status.calendarType == CalendarType.HOLIDAY
     val isWeekend = status.calendarType == CalendarType.WEEKEND
     val isRed = isHoliday || isWeekend
     val hasCrews = status.totalActiveCount > 0
+
+    var showHolidaySheet by remember { mutableStateOf(false) }
+    val holidayName = remember(date) {
+        if (isHoliday) vm.getHolidayName(date) else null
+    }
 
     val bg = if (isRed) ShiftColors.HolidayRed.copy(alpha = 0.15f) else Color.Transparent
 
@@ -102,7 +114,12 @@ private fun DayCell(date: LocalDate, status: DayStatus) {
             .aspectRatio(1f)
             .padding(2.dp)
             .clip(MaterialTheme.shapes.extraSmall)
-            .background(bg),
+            .background(bg)
+            .clickable(
+                enabled = isHoliday,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { showHolidaySheet = true },
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -123,6 +140,17 @@ private fun DayCell(date: LocalDate, status: DayStatus) {
                 CrewStripes(status.activeCrews, status.totalActiveCount)
             }
         }
+    }
+
+    if (showHolidaySheet) {
+        AlertDialog(
+            onDismissRequest = { showHolidaySheet = false },
+            title = { Text(date.formatRu()) },
+            text = { Text(holidayName ?: "Праздничный день") },
+            confirmButton = {
+                TextButton(onClick = { showHolidaySheet = false }) { Text("OK") }
+            }
+        )
     }
 }
 
@@ -169,6 +197,14 @@ internal fun parseCrewColor(hex: String): Color = try {
     Color(android.graphics.Color.parseColor(hex))
 } catch (e: Exception) {
     ShiftColors.WorkBlue
+}
+
+private fun LocalDate.formatRu(): String {
+    val months = listOf(
+        "января","февраля","марта","апреля","мая","июня",
+        "июля","августа","сентября","октября","ноября","декабря"
+    )
+    return "$dayOfMonth ${months[monthNumber - 1]} $year"
 }
 
 private fun buildMonthDays(year: Int, month: Int): List<LocalDate?> {

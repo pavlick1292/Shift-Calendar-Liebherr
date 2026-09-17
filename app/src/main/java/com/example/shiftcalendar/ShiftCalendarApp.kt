@@ -11,6 +11,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 class ShiftCalendarApp : Application() {
 
@@ -42,6 +45,13 @@ class ShiftCalendarApp : Application() {
         appScope.launch {
             container.notificationScheduler.rescheduleAll()
         }
+
+        appScope.launch {
+            val currentYear = Clock.System.now()
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .year
+            container.calendarRepository.refresh(currentYear)
+            container.calendarRepository.refresh(currentYear + 1)
+        }
     }
 }
-

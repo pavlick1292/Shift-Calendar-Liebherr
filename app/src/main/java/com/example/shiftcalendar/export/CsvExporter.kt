@@ -13,8 +13,7 @@ object CsvExporter {
 
     fun export(context: Context, year: Int, rows: List<Pair<Person, WorkHours>>): File {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val file = File(dir, "hours_" + year + ".csv")
-
+val file = File(dir, "hours_${year}_${System.currentTimeMillis()}.csv")
         FileOutputStream(file).bufferedWriter(Charsets.UTF_8).use { w ->
             w.write("\uFEFF")
             w.write("ФИО;Профессия;Проживание;Обычные;Ночные;Дорога;Ручные;Итого;Норма;Переработка")
@@ -47,6 +46,8 @@ object CsvExporter {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/csv"
             putExtra(Intent.EXTRA_STREAM, uri)
+putExtra(Intent.EXTRA_TITLE, file.name)
+putExtra(Intent.EXTRA_SUBJECT, file.name)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 val chooser = Intent.createChooser(intent, "Отправить CSV").apply {

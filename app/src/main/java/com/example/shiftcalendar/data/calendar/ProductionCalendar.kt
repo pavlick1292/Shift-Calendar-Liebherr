@@ -8,13 +8,15 @@ import kotlinx.serialization.Serializable
 data class ProductionCalendarJson(
     val year: Int,
     val holidays: List<String> = emptyList(),
-    val workingWeekends: List<String> = emptyList()
+    val workingWeekends: List<String> = emptyList(),
+    val holidayNames: Map<String, String> = emptyMap()
 )
 
 data class ProductionCalendar(
     val year: Int,
     val holidays: Set<LocalDate>,
-    val workingWeekends: Set<LocalDate>
+    val workingWeekends: Set<LocalDate>,
+    val holidayNames: Map<LocalDate, String> = emptyMap()
 ) {
     fun isHoliday(date: LocalDate): Boolean = date in holidays
 
@@ -25,4 +27,6 @@ data class ProductionCalendar(
     }
 
     fun isWorkingDay(date: LocalDate): Boolean = !isHoliday(date) && !isWeekend(date)
+
+    fun holidayName(date: LocalDate): String? = holidayNames[date]
 }

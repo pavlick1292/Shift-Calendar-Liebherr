@@ -176,15 +176,18 @@ private fun PersonCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text(person.fullName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (person.isMe) {
+                        Text("⭐ ", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Text(person.fullName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold)
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(person.profession.titleRu,
                     style = MaterialTheme.typography.labelSmall,

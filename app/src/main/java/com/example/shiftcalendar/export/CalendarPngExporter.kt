@@ -200,7 +200,7 @@ object CalendarPngExporter {
 
         // Сохраняем
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val file = File(dir, "calendar_$year.png")
+val file = File(dir, "calendar_${year}_${System.currentTimeMillis()}.png")
         FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
         return file
@@ -215,6 +215,8 @@ object CalendarPngExporter {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
+putExtra(Intent.EXTRA_TITLE, file.name)
+putExtra(Intent.EXTRA_SUBJECT, file.name)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 val chooser = Intent.createChooser(intent, "Отправить календарь").apply {

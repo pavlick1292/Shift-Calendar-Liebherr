@@ -20,16 +20,19 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Nightlight
-import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -67,7 +70,7 @@ fun CrewDetailScreen(
     )
     val state by vm.state.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Вахты", "Люди", "Настройки")
+    val tabs = listOf("Вахты", "Люди")
 
     Scaffold(
         topBar = {
@@ -90,7 +93,6 @@ fun CrewDetailScreen(
             when (tab) {
                 0 -> ShiftsTab(vm, state.periods)
                 1 -> PeopleTab(container, vm, state.members)
-                2 -> SettingsTab()
             }
         }
     }
@@ -101,11 +103,12 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
     var editing by remember { mutableStateOf<ShiftPeriod?>(null) }
     var showAdd by remember { mutableStateOf(false) }
     var showGenerate by remember { mutableStateOf(false) }
+    var showContinue by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp, 12.dp, 16.dp, 96.dp),
+            contentPadding = PaddingValues(16.dp, 12.dp, 16.dp, 100.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             if (periods.isEmpty()) {
@@ -124,23 +127,39 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
                     onDelete = { vm.deletePeriod(p) }
                 )
             }
+
+            if (periods.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { showContinue = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Outlined.PlayArrow, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Продолжить цикл вахт")
+                    }
+                }
+            }
         }
 
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.Center
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = { showAdd = true }) {
-                    Icon(Icons.Outlined.Add, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Вахта")
-                }
-                Button(onClick = { showGenerate = true }) {
-                    Icon(Icons.Outlined.AutoAwesome, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("По циклу")
-                }
+            OutlinedButton(onClick = { showAdd = true }) {
+                Icon(Icons.Outlined.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Вахта")
+            }
+            Spacer(Modifier.width(12.dp))
+            Button(onClick = { showGenerate = true }) {
+                Icon(Icons.Outlined.AutoAwesome, null)
+                Spacer(Modifier.width(6.dp))
+                Text("По циклу")
             }
         }
     }
@@ -162,6 +181,19 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
             onGenerate = { start, shift, rest, count, roadB, roadA, night ->
                 vm.generatePeriods(start, shift, rest, count, roadB, roadA, night)
                 showGenerate = false
+            }
+        )
+    }
+
+    if (showContinue && periods.isNotEmpty()) {
+        val last = periods.maxByOrNull { it.endDate }!!
+        ContinueCycleDialog(
+            lastPeriod = last,
+            existingPeriods = periods,
+            onDismiss = { showContinue = false },
+            onGenerate = { count, night ->
+                vm.continueCycle(last, count, night, periods)
+                showContinue = false
             }
         )
     }
@@ -189,7 +221,7 @@ private fun ShiftPeriodCard(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Дорога: ${period.roadDaysBefore} до / ${period.roadDaysAfter} после" +
+                "Дней: ${period.endDate.toEpochDays() - period.startDate.toEpochDays() + 1}" +
                     (if (period.label.isNotBlank()) " · ${period.label}" else ""),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -203,6 +235,65 @@ private fun ShiftPeriodCard(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ContinueCycleDialog(
+    lastPeriod: ShiftPeriod,
+    existingPeriods: List<ShiftPeriod>,
+    onDismiss: () -> Unit,
+    onGenerate: (count: Int, isNight: Boolean) -> Unit
+) {
+    val shiftDays = (lastPeriod.endDate.toEpochDays() - lastPeriod.startDate.toEpochDays() + 1).toInt()
+
+    val previous = existingPeriods
+        .filter { it.endDate < lastPeriod.startDate }
+        .maxByOrNull { it.endDate }
+
+    val restDays = if (previous != null) {
+        (lastPeriod.startDate.toEpochDays() - previous.endDate.toEpochDays() - 1).toInt()
+    } else 0
+
+    var count by remember { mutableStateOf("4") }
+    var night by remember { mutableStateOf(lastPeriod.isNightShift) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Продолжить цикл") },
+        text = {
+            Column {
+                Text("Последняя вахта: ${lastPeriod.startDate} – ${lastPeriod.endDate}",
+                    style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(4.dp))
+                Text("Длина вахты: $shiftDays дн., отдыха: $restDays дн.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = count,
+                    onValueChange = { count = it.filter(Char::isDigit) },
+                    label = { Text("Сколько вахт добавить") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = night, onCheckedChange = { night = it })
+                    Text("Ночные смены")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = (count.toIntOrNull() ?: 0) > 0,
+                onClick = { onGenerate(count.toInt(), night) }
+            ) { Text("Добавить") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
 }
 
 @Composable
@@ -266,6 +357,9 @@ private fun MemberRow(
         ) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (m.person.isMe) {
+                        Text("⭐ ", style = MaterialTheme.typography.titleMedium)
+                    }
                     Text(m.person.fullName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold)
@@ -284,7 +378,7 @@ private fun MemberRow(
             }
             IconButton(onClick = onToggleNight) {
                 Icon(
-                    if (m.worksAtNight) Icons.Outlined.Nightlight else Icons.Outlined.NightsStay,
+                    Icons.Outlined.Nightlight,
                     "Ночная смена",
                     tint = if (m.worksAtNight) ShiftColors.NightViolet
                            else MaterialTheme.colorScheme.onSurfaceVariant
@@ -294,12 +388,5 @@ private fun MemberRow(
                 Icon(Icons.Outlined.Close, "Убрать", tint = MaterialTheme.colorScheme.error)
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsTab() {
-    Column(Modifier.padding(16.dp)) {
-        Text("Настройки состава — в разработке", style = MaterialTheme.typography.bodyLarge)
     }
 }

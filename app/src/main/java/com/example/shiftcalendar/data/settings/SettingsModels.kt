@@ -40,4 +40,16 @@ data class ThemeSettings(
     val dynamicColor: Boolean = false
 )
 
-enum class ThemeMode { SYSTEM, LIGHT, DARK }
+enum class ThemeMode(val titleRu: String) {
+    SYSTEM("Системная"),
+    LIGHT("Светлая"),
+    DARK("Тёмная"),
+    HIGH_CONTRAST("Высокий контраст"),
+    AURORA("Северное сияние"),
+    INDUSTRIAL("Индустриальная");
+
+    companion object {
+        fun fromName(name: String): ThemeMode =
+            entries.firstOrNull { it.name == name } ?: SYSTEM
+    }
+}

@@ -57,6 +57,12 @@ class CalendarViewModel(private val container: AppContainer) : ViewModel() {
     fun setYear(year: Int) { _year.value = year }
     fun setTab(index: Int) { _selectedTab.value = index }
 
+    fun getHolidayName(date: LocalDate): String? {
+        val state = uiState.value
+        val calendar = container.calendarRepository.get(state.year)
+        return calendar.holidayName(date)
+    }
+
     fun dayStatusForCrew(date: LocalDate, crewId: Long): DayStatus {
         val state = uiState.value
         val calendar = container.calendarRepository.get(state.year)
