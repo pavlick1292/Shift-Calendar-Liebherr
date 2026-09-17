@@ -16,22 +16,32 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.shiftcalendar.data.settings.OnboardingSettings
 import com.example.shiftcalendar.di.AppContainer
 import com.example.shiftcalendar.ui.animation.LocalAnimationSettings
 import com.example.shiftcalendar.ui.calendar.CalendarScreen
 import com.example.shiftcalendar.ui.crews.CrewDetailScreen
 import com.example.shiftcalendar.ui.crews.CrewsScreen
 import com.example.shiftcalendar.ui.hours.HoursScreen
+import com.example.shiftcalendar.ui.onboarding.OnboardingData
+import com.example.shiftcalendar.ui.onboarding.TabHintDialog
+import com.example.shiftcalendar.ui.onboarding.WelcomeDialog
 import com.example.shiftcalendar.ui.people.PeopleScreen
 import com.example.shiftcalendar.ui.people.PersonDetailScreen
 import com.example.shiftcalendar.ui.settings.SettingsScreen
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 data class BottomNavItem(
     val route: String,
@@ -55,6 +65,12 @@ fun AppRoot(
     val navController = rememberNavController()
     val anims = LocalAnimationSettings.current
 
+    val onboarding by container.settings.onboardingSettings
+        .collectAsStateWithLifecycle(initialValue = OnboardingSettings())
+
+    var showWelcome by remember { mutableStateOf(false) }
+    var currentHint by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(initialDeepLink) {
         val link = initialDeepLink ?: return@LaunchedEffect
         val uri = Uri.parse(link)
@@ -68,6 +84,25 @@ fun AppRoot(
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
+
+    // Показ приветствия
+    LaunchedEffect(onboarding.welcomeShown) {
+        if (!onboarding.welcomeShown) {
+            showWelcome = true
+        }
+    }
+
+    // Показ подсказки при первом заходе на вкладку
+    LaunchedEffect(currentRoute, onboarding.shownTabs) {
+        val route = currentRoute ?: return@LaunchedEffect
+        if (route in bottomItems.map { it.route } && route !in onboarding.shownTabs) {
+            // Не показываем, пока открыт welcome
+            if (!showWelcome) {
+                currentHint = route
+            }
+        }
+    }
+
     val showBottomBar = currentRoute in bottomItems.map { it.route }
 
     Scaffold(
@@ -124,6 +159,37 @@ fun AppRoot(
                 val personId = backStackEntry.arguments?.getString("personId")?.toLongOrNull() ?: 0L
                 PersonDetailScreen(container, personId, navController)
             }
+        }
+    }
+
+    // Приветственный диалог
+    if (showWelcome) {
+        WelcomeDialog(
+            onDismiss = {
+                showWelcome = false
+                // Записываем в DataStore
+                CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    container.settings.setWelcomeShown()
+                }
+            }
+        )
+    }
+
+    // Диалог-подсказка
+    currentHint?.let { route ->
+        val hint = OnboardingData.forRoute(route)
+        if (hint != null) {
+            TabHintDialog(
+                hint = hint,
+                onDismiss = {
+                    currentHint = null
+                    CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                        container.settings.markTabShown(route)
+                    }
+                }
+            )
+        } else {
+            currentHint = null
         }
     }
 }

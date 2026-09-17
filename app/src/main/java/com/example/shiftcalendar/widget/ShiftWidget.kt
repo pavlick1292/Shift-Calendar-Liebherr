@@ -38,7 +38,8 @@ class ShiftWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val state = computeState(context)
-        provideContent { WidgetContent(state) }
+        val bg = WidgetSettings.getBackground(context)
+        provideContent { WidgetContent(state, bg) }
     }
 
     private suspend fun computeState(context: Context): WidgetState {
@@ -84,24 +85,16 @@ class ShiftWidget : GlanceAppWidget() {
         return WidgetState.NoData
     }
 
-    private fun findActive(
-        crews: List<CrewWithPeriods>,
-        today: LocalDate
-    ): Pair<Crew, ShiftPeriod>? {
+    private fun findActive(crews: List<CrewWithPeriods>, today: LocalDate): Pair<Crew, ShiftPeriod>? {
         for (cwp in crews) {
             for (p in cwp.periods) {
-                if (today >= p.startDate && today <= p.endDate) {
-                    return cwp.crew to p
-                }
+                if (today >= p.startDate && today <= p.endDate) return cwp.crew to p
             }
         }
         return null
     }
 
-    private fun findUpcoming(
-        crews: List<CrewWithPeriods>,
-        today: LocalDate
-    ): Pair<Crew, ShiftPeriod>? {
+    private fun findUpcoming(crews: List<CrewWithPeriods>, today: LocalDate): Pair<Crew, ShiftPeriod>? {
         var best: Pair<Crew, ShiftPeriod>? = null
         for (cwp in crews) {
             for (p in cwp.periods) {
@@ -115,10 +108,7 @@ class ShiftWidget : GlanceAppWidget() {
         return best
     }
 
-    private fun findLast(
-        crews: List<CrewWithPeriods>,
-        today: LocalDate
-    ): Pair<Crew, ShiftPeriod>? {
+    private fun findLast(crews: List<CrewWithPeriods>, today: LocalDate): Pair<Crew, ShiftPeriod>? {
         var best: Pair<Crew, ShiftPeriod>? = null
         for (cwp in crews) {
             for (p in cwp.periods) {
@@ -155,21 +145,17 @@ sealed interface WidgetState {
     ) : WidgetState
 }
 
-private val BgTop = Color(0xFF1A1F36)
-private val Accent = Color(0xFF8B5CF6)
-private val AccentWarm = Color(0xFFFF9F43)
-private val TextPrimary = Color(0xFFFFFFFF)
-private val TextSecondary = Color(0xFFB8BCC8)
-private val TextDim = Color(0xFF7A7F94)
-private val ProgressBg = Color(0xFF2A3050)
-
 @Composable
-private fun WidgetContent(state: WidgetState) {
+private fun WidgetContent(state: WidgetState, bg: WidgetBg) {
+    val textMain = Color(bg.textColor)
+    val textDim = Color(bg.textColor).copy(alpha = 0.7f)
+    val accent = Color(bg.accentColor)
+
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(BgTop)
-            .padding(8.dp),
+            .background(Color(bg.topColor))
+            .padding(4.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -178,25 +164,30 @@ private fun WidgetContent(state: WidgetState) {
             modifier = GlanceModifier.fillMaxWidth()
         ) {
             when (state) {
-                WidgetState.NoMe -> NoMeContent()
-                WidgetState.NoCrew -> NoCrewContent()
-                WidgetState.NoData -> NoDataContent()
-                is WidgetState.OnShift -> OnShiftContent(state)
-                is WidgetState.BeforeShift -> BeforeShiftContent(state)
-                is WidgetState.Rest -> RestContent(state)
+                WidgetState.NoMe -> NoMeContent(textMain, textDim)
+                WidgetState.NoCrew -> NoCrewContent(textMain, textDim)
+                WidgetState.NoData -> NoDataContent(textMain, textDim)
+                is WidgetState.OnShift -> OnShiftContent(state, textMain, textDim, accent)
+                is WidgetState.BeforeShift -> BeforeShiftContent(state, textMain, textDim, accent)
+                is WidgetState.Rest -> RestContent(state, textMain, textDim)
             }
         }
     }
 }
 
 @Composable
-private fun OnShiftContent(s: WidgetState.OnShift) {
+private fun OnShiftContent(
+    s: WidgetState.OnShift,
+    textMain: Color,
+    textDim: Color,
+    accent: Color
+) {
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             s.daysLeft.toString(),
             style = TextStyle(
-                color = ColorProvider(TextPrimary),
-                fontSize = 64.sp,
+                color = ColorProvider(textMain),
+                fontSize = 48.sp,
                 fontWeight = FontWeight.Bold
             )
         )
@@ -204,31 +195,36 @@ private fun OnShiftContent(s: WidgetState.OnShift) {
         Text(
             pluralDays(s.daysLeft.toLong()),
             style = TextStyle(
-                color = ColorProvider(TextSecondary),
-                fontSize = 14.sp
+                color = ColorProvider(textDim),
+                fontSize = 13.sp
             ),
-            modifier = GlanceModifier.padding(bottom = 14.dp)
+            modifier = GlanceModifier.padding(bottom = 10.dp)
         )
     }
     Text(
         "до конца",
         style = TextStyle(
-            color = ColorProvider(TextSecondary),
-            fontSize = 12.sp
+            color = ColorProvider(textDim),
+            fontSize = 11.sp
         )
     )
-    Spacer(GlanceModifier.height(6.dp))
-    ProgressBar(s.progress)
+    Spacer(GlanceModifier.height(4.dp))
+    ProgressBar(s.progress, accent)
 }
 
 @Composable
-private fun BeforeShiftContent(s: WidgetState.BeforeShift) {
+private fun BeforeShiftContent(
+    s: WidgetState.BeforeShift,
+    textMain: Color,
+    textDim: Color,
+    accent: Color
+) {
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             s.daysBefore.toString(),
             style = TextStyle(
-                color = ColorProvider(AccentWarm),
-                fontSize = 64.sp,
+                color = ColorProvider(accent),
+                fontSize = 48.sp,
                 fontWeight = FontWeight.Bold
             )
         )
@@ -236,29 +232,33 @@ private fun BeforeShiftContent(s: WidgetState.BeforeShift) {
         Text(
             pluralDays(s.daysBefore.toLong()),
             style = TextStyle(
-                color = ColorProvider(TextSecondary),
-                fontSize = 14.sp
+                color = ColorProvider(textDim),
+                fontSize = 13.sp
             ),
-            modifier = GlanceModifier.padding(bottom = 14.dp)
+            modifier = GlanceModifier.padding(bottom = 10.dp)
         )
     }
     Text(
         "до вахты",
         style = TextStyle(
-            color = ColorProvider(TextSecondary),
-            fontSize = 12.sp
+            color = ColorProvider(textDim),
+            fontSize = 11.sp
         )
     )
 }
 
 @Composable
-private fun RestContent(s: WidgetState.Rest) {
+private fun RestContent(
+    s: WidgetState.Rest,
+    textMain: Color,
+    textDim: Color
+) {
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             s.daysRest.toString(),
             style = TextStyle(
-                color = ColorProvider(TextPrimary),
-                fontSize = 64.sp,
+                color = ColorProvider(textMain),
+                fontSize = 48.sp,
                 fontWeight = FontWeight.Bold
             )
         )
@@ -266,109 +266,85 @@ private fun RestContent(s: WidgetState.Rest) {
         Text(
             pluralDays(s.daysRest.toLong()),
             style = TextStyle(
-                color = ColorProvider(TextSecondary),
-                fontSize = 14.sp
+                color = ColorProvider(textDim),
+                fontSize = 13.sp
             ),
-            modifier = GlanceModifier.padding(bottom = 14.dp)
+            modifier = GlanceModifier.padding(bottom = 10.dp)
         )
     }
     Text(
         "отдыха",
         style = TextStyle(
-            color = ColorProvider(TextSecondary),
-            fontSize = 12.sp
+            color = ColorProvider(textDim),
+            fontSize = 11.sp
         )
     )
 }
 
 @Composable
-private fun NoMeContent() {
-    Text("👤", style = TextStyle(fontSize = 32.sp))
-    Spacer(GlanceModifier.height(6.dp))
+private fun NoMeContent(textMain: Color, textDim: Color) {
+    Text("👤", style = TextStyle(fontSize = 24.sp))
+    Spacer(GlanceModifier.height(4.dp))
     Text(
         "Отметь себя",
         style = TextStyle(
-            color = ColorProvider(TextPrimary),
-            fontSize = 14.sp,
+            color = ColorProvider(textMain),
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium
-        )
-    )
-    Spacer(GlanceModifier.height(4.dp))
-    Text(
-        "Люди → «Это я»",
-        style = TextStyle(
-            color = ColorProvider(TextSecondary),
-            fontSize = 10.sp
         )
     )
 }
 
 @Composable
-private fun NoCrewContent() {
-    Text("📋", style = TextStyle(fontSize = 32.sp))
-    Spacer(GlanceModifier.height(6.dp))
+private fun NoCrewContent(textMain: Color, textDim: Color) {
+    Text("📋", style = TextStyle(fontSize = 24.sp))
+    Spacer(GlanceModifier.height(4.dp))
     Text(
         "Нет состава",
         style = TextStyle(
-            color = ColorProvider(TextPrimary),
-            fontSize = 14.sp,
+            color = ColorProvider(textMain),
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium
-        )
-    )
-    Spacer(GlanceModifier.height(4.dp))
-    Text(
-        "Добавь себя в состав",
-        style = TextStyle(
-            color = ColorProvider(TextSecondary),
-            fontSize = 10.sp
         )
     )
 }
 
 @Composable
-private fun NoDataContent() {
-    Text("📅", style = TextStyle(fontSize = 32.sp))
-    Spacer(GlanceModifier.height(6.dp))
+private fun NoDataContent(textMain: Color, textDim: Color) {
+    Text("📅", style = TextStyle(fontSize = 24.sp))
+    Spacer(GlanceModifier.height(4.dp))
     Text(
         "Нет вахт",
         style = TextStyle(
-            color = ColorProvider(TextPrimary),
-            fontSize = 14.sp,
+            color = ColorProvider(textMain),
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium
-        )
-    )
-    Spacer(GlanceModifier.height(4.dp))
-    Text(
-        "Создай вахту",
-        style = TextStyle(
-            color = ColorProvider(TextSecondary),
-            fontSize = 10.sp
         )
     )
 }
 
 @Composable
-private fun ProgressBar(progress: Float) {
+private fun ProgressBar(progress: Float, accent: Color) {
     val filled = (progress * 100).toInt().coerceIn(0, 100)
 
     Box(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .height(6.dp)
-            .background(ProgressBg)
+            .height(5.dp)
+            .background(accent.copy(alpha = 0.2f))
     ) {
-        Row(modifier = GlanceModifier.fillMaxWidth().height(6.dp)) {
+        Row(modifier = GlanceModifier.fillMaxWidth().height(5.dp)) {
             Box(
                 modifier = GlanceModifier
                     .width(filled.dp)
-                    .height(6.dp)
-                    .background(Accent)
+                    .height(5.dp)
+                    .background(accent)
             ) {}
             Box(
                 modifier = GlanceModifier
                     .width((100 - filled).dp)
-                    .height(6.dp)
-                    .background(ProgressBg)
+                    .height(5.dp)
+                    .background(accent.copy(alpha = 0.2f))
             ) {}
         }
     }

@@ -2,6 +2,10 @@ package com.example.shiftcalendar.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +16,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -25,6 +32,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -39,21 +47,31 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.shiftcalendar.R
 import com.example.shiftcalendar.data.settings.AnimationSettings
 import com.example.shiftcalendar.data.settings.HoursSettings
 import com.example.shiftcalendar.data.settings.NotificationSettings
 import com.example.shiftcalendar.data.settings.ThemeMode
 import com.example.shiftcalendar.data.settings.ThemeSettings
 import com.example.shiftcalendar.di.AppContainer
+import com.example.shiftcalendar.widget.ShiftWidget
+import com.example.shiftcalendar.widget.WidgetBg
+import com.example.shiftcalendar.widget.WidgetSettings
 import kotlinx.coroutines.launch
 
-// Ссылка на донат — замени на свою!
 private const val DONATION_URL = "https://www.donationalerts.com/r/pavel1292"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(container: AppContainer) {
@@ -63,6 +81,8 @@ fun SettingsScreen(container: AppContainer) {
     val notif by container.settings.notificationSettings.collectAsStateWithLifecycle(initialValue = NotificationSettings())
     val hours by container.settings.hoursSettings.collectAsStateWithLifecycle(initialValue = HoursSettings())
     val theme by container.settings.themeSettings.collectAsStateWithLifecycle(initialValue = ThemeSettings())
+
+    var widgetBg by remember { mutableStateOf(WidgetSettings.getBackground(context)) }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Настройки") }) }
@@ -79,10 +99,35 @@ fun SettingsScreen(container: AppContainer) {
                 }
                 SettingSwitch(
                     title = "Динамические цвета",
-                    subtitle = "Material You (Android 12+, только для системной темы)",
+                    subtitle = "Material You (Android 12+)",
                     checked = theme.dynamicColor,
                     onChange = { scope.launch { container.settings.setDynamicColor(it) } }
                 )
+            }
+
+            item {
+                SectionHeader("Виджет")
+                Text(
+                    "Фон виджета на рабочем столе",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(Modifier.height(8.dp))
+                WidgetBg.entries.forEach { bg ->
+                    WidgetBgOption(
+                        bg = bg,
+                        selected = bg == widgetBg,
+                        onClick = {
+                            widgetBg = bg
+                            WidgetSettings.setBackground(context, bg)
+                            scope.launch {
+                                try {
+                                    ShiftWidget().updateAll(context)
+                                } catch (e: Exception) { }
+                            }
+                        }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
             }
 
             item {
@@ -133,13 +178,6 @@ fun SettingsScreen(container: AppContainer) {
                     enabled = notif.enabled,
                     onChange = { }
                 )
-                SettingSwitch(
-                    title = "День в дороге",
-                    subtitle = "за ${notif.roadDaysBefore} д.",
-                    checked = notif.roadEnabled,
-                    enabled = notif.enabled,
-                    onChange = { scope.launch { container.settings.setRoadEnabled(it) } }
-                )
             }
 
             item {
@@ -155,15 +193,31 @@ fun SettingsScreen(container: AppContainer) {
                     onChange = { scope.launch { container.settings.setLunchHours(it) } }
                 )
                 SettingNumber(
-                    title = "Часов в дороге",
-                    value = hours.roadDayHours,
-                    onChange = { scope.launch { container.settings.setRoadDayHours(it) } }
-                )
-                SettingNumber(
                     title = "Норма часов за год",
                     value = hours.yearlyNorm,
                     onChange = { scope.launch { container.settings.setYearlyNorm(it) } }
                 )
+            }
+
+            item {
+                SectionHeader("Подсказки")
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Показать приветствие и подсказки заново.",
+                            style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch { container.settings.resetOnboarding() }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Outlined.Refresh, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Сбросить подсказки")
+                        }
+                    }
+                }
             }
 
             item {
@@ -174,7 +228,7 @@ fun SettingsScreen(container: AppContainer) {
                             Icon(Icons.Outlined.Info, null,
                                 tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
-                            Text("Вахта · График и учёт",
+                            Text("Моя вахта",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold)
                         }
@@ -182,9 +236,6 @@ fun SettingsScreen(container: AppContainer) {
                         Text("Версия 1.0",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(8.dp))
-                        Text("Приложение для отслеживания графика вахт, учёта часов, состава смен, ночных смен и дней в дороге.",
-                            style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
@@ -193,9 +244,11 @@ fun SettingsScreen(container: AppContainer) {
                 SectionHeader("Поддержать проект")
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("Приложение бесплатное. Если оно помогает тебе — можешь поддержать разработку.",
+                        Text("Приложение бесплатное. Если оно помогает тебе — поддержи разработку.",
                             style = MaterialTheme.typography.bodyLarge)
+
                         Spacer(Modifier.height(12.dp))
+
                         Button(
                             onClick = {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(DONATION_URL))
@@ -208,16 +261,127 @@ fun SettingsScreen(container: AppContainer) {
                         ) {
                             Icon(Icons.Outlined.FavoriteBorder, null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Поддержать ❤️")
+                            Text("Поддержать через DonationAlerts")
                         }
+
+                        Spacer(Modifier.height(14.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
+                            )
+                            Text(
+                                "  или  ",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
+                            )
+                        }
+
+                        Spacer(Modifier.height(14.dp))
+
+                        Text(
+                            "📱 Перевод по СБП (без комиссии)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.qr_donate),
+                                contentDescription = "QR-код для перевода",
+                                modifier = Modifier.size(180.dp)
+                            )
+                        }
+
                         Spacer(Modifier.height(6.dp))
-                        Text("Откроется страница DonationAlerts в браузере",
+
+                        Text(
+                            "Наведи камеру банковского приложения и переведи любую сумму",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth())
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidgetBgOption(
+    bg: WidgetBg,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val borderColor = if (selected) MaterialTheme.colorScheme.primary
+                      else Color.Transparent
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 2.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(12.dp)
+            ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(bg.topColor), Color(bg.bottomColor))
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "6",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(bg.accentColor)
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Text(
+                bg.titleRu,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            if (selected) {
+                Text("✓", fontSize = 20.sp,
+                    color = MaterialTheme.colorScheme.primary)
             }
         }
     }

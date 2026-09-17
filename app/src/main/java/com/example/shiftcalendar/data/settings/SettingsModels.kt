@@ -40,6 +40,11 @@ data class ThemeSettings(
     val dynamicColor: Boolean = false
 )
 
+data class OnboardingSettings(
+    val welcomeShown: Boolean = false,
+    val shownTabs: Set<String> = emptySet()
+)
+
 enum class ThemeMode(val titleRu: String) {
     SYSTEM("Системная"),
     LIGHT("Светлая"),

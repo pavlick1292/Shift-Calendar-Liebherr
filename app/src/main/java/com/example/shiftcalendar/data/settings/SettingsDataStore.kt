@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -57,6 +58,11 @@ class SettingsDataStore(
         val DYNAMIC_COLOR = booleanPreferencesKey("theme_dynamic_color")
     }
 
+    private object OnboardingKeys {
+        val WELCOME_SHOWN = booleanPreferencesKey("onb_welcome_shown")
+        val SHOWN_TABS    = stringSetPreferencesKey("onb_shown_tabs")
+    }
+
     val animationSettings: Flow<AnimationSettings> = context.dataStore.data.map { p ->
         AnimationSettings(
             animationsEnabled = p[AnimKeys.ENABLED] ?: true,
@@ -97,11 +103,19 @@ class SettingsDataStore(
 
     val themeSettings: Flow<ThemeSettings> = context.dataStore.data.map { p ->
         ThemeSettings(
-            themeMode = p[ThemeKeys.MODE]?.let { ThemeMode.valueOf(it) } ?: ThemeMode.SYSTEM,
+            themeMode = p[ThemeKeys.MODE]?.let { ThemeMode.fromName(it) } ?: ThemeMode.SYSTEM,
             dynamicColor = p[ThemeKeys.DYNAMIC_COLOR] ?: false
         )
     }
 
+    val onboardingSettings: Flow<OnboardingSettings> = context.dataStore.data.map { p ->
+        OnboardingSettings(
+            welcomeShown = p[OnboardingKeys.WELCOME_SHOWN] ?: false,
+            shownTabs    = p[OnboardingKeys.SHOWN_TABS] ?: emptySet()
+        )
+    }
+
+    // Setters — animation
     suspend fun setAnimationsEnabled(value: Boolean) = set(AnimKeys.ENABLED, value)
     suspend fun setScreenTransitions(value: Boolean) = set(AnimKeys.TRANSITIONS, value)
     suspend fun setCardAnimations(value: Boolean) = set(AnimKeys.CARDS, value)
@@ -109,6 +123,7 @@ class SettingsDataStore(
     suspend fun setStaggerLists(value: Boolean) = set(AnimKeys.STAGGER, value)
     suspend fun setGlassBlur(value: Boolean) = set(AnimKeys.GLASS, value)
 
+    // Setters — notifications
     suspend fun setNotificationsEnabled(value: Boolean) = set(NotifKeys.ENABLED, value)
     suspend fun setShiftStartDaysBefore(value: Int) = set(NotifKeys.START_DAYS_BEFORE, value)
     suspend fun setShiftStartDayEnabled(value: Boolean) = set(NotifKeys.START_DAY_ENABLED, value)
@@ -121,6 +136,7 @@ class SettingsDataStore(
     suspend fun setQuietHoursEnd(value: Int) = set(NotifKeys.QUIET_END, value)
     suspend fun setActiveCrewsOnly(value: Boolean) = set(NotifKeys.ACTIVE_ONLY, value)
 
+    // Setters — hours
     suspend fun setShiftDayHours(value: Double) = set(HoursKeys.SHIFT_HOURS, value)
     suspend fun setLunchHours(value: Double) = set(HoursKeys.LUNCH_HOURS, value)
     suspend fun setNightShiftHours(value: Double) = set(HoursKeys.NIGHT_HOURS, value)
@@ -128,10 +144,29 @@ class SettingsDataStore(
     suspend fun setYearlyNorm(value: Double) = set(HoursKeys.YEARLY_NORM, value)
     suspend fun setTrackOvertime(value: Boolean) = set(HoursKeys.TRACK_OVERTIME, value)
 
+    // Setters — theme
     suspend fun setThemeMode(mode: ThemeMode) =
         context.dataStore.edit { it[ThemeKeys.MODE] = mode.name }
-
     suspend fun setDynamicColor(value: Boolean) = set(ThemeKeys.DYNAMIC_COLOR, value)
+
+    // Setters — onboarding
+    suspend fun setWelcomeShown() {
+        context.dataStore.edit { it[OnboardingKeys.WELCOME_SHOWN] = true }
+    }
+
+    suspend fun markTabShown(tab: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[OnboardingKeys.SHOWN_TABS] ?: emptySet()
+            prefs[OnboardingKeys.SHOWN_TABS] = current + tab
+        }
+    }
+
+    suspend fun resetOnboarding() {
+        context.dataStore.edit { prefs ->
+            prefs[OnboardingKeys.WELCOME_SHOWN] = false
+            prefs[OnboardingKeys.SHOWN_TABS] = emptySet()
+        }
+    }
 
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
         context.dataStore.edit { it[key] = value }
