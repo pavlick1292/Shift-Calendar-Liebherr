@@ -18,10 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,9 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,8 +40,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shiftcalendar.di.AppContainer
-import com.example.shiftcalendar.export.CsvExporter
-import com.example.shiftcalendar.export.PdfExporter
 import com.example.shiftcalendar.ui.crews.vmFactory
 import com.example.shiftcalendar.ui.theme.ShiftColors
 import java.util.Locale
@@ -158,7 +150,6 @@ private fun SummaryCard(state: HoursUiState) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCell("Обычные", state.totalRegular, ShiftColors.WorkBlue, Modifier.weight(1f))
                 StatCell("Ночные", state.totalNight, ShiftColors.NightViolet, Modifier.weight(1f))
-                StatCell("Дорога", state.totalRoad, ShiftColors.RoadAmber, Modifier.weight(1f))
             }
             if (state.totalAll > state.norm) {
                 val overText = String.format(Locale.US, "%.0f", state.totalAll - state.norm)
@@ -218,10 +209,6 @@ private fun MonthRow(m: MonthHours) {
                     SmallStat("Обычные", regularText, ShiftColors.WorkBlue)
                     if (m.nightHours > 0) {
                         SmallStat("Ночные", nightText, ShiftColors.NightViolet)
-                    }
-                    if (m.roadHours > 0) {
-                        val roadText = String.format(Locale.US, "%.0f", m.roadHours)
-                        SmallStat("Дорога", roadText, ShiftColors.RoadAmber)
                     }
                 }
             }

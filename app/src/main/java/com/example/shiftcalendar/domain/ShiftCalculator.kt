@@ -5,10 +5,7 @@ import com.example.shiftcalendar.data.db.entity.CrewMember
 import com.example.shiftcalendar.data.db.entity.ShiftPeriod
 import com.example.shiftcalendar.domain.model.CalendarType
 import com.example.shiftcalendar.domain.model.DayStatus
-import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 
 class ShiftCalculator(private val calendar: ProductionCalendar) {
 
@@ -18,23 +15,15 @@ class ShiftCalculator(private val calendar: ProductionCalendar) {
         memberships: List<CrewMember> = emptyList()
     ): DayStatus {
         val active = mutableListOf<ShiftPeriod>()
-        val road = mutableListOf<ShiftPeriod>()
         var night = false
 
         for (p in periods) {
-            val roadStart = p.startDate.minus(DatePeriod(days = p.roadDaysBefore))
-            val roadEnd = p.endDate.plus(DatePeriod(days = p.roadDaysAfter))
-
-            when {
-                date >= roadStart && date < p.startDate -> road += p
-                date >= p.startDate && date <= p.endDate -> {
-                    active += p
-                    val memberNight = memberships
-                        .firstOrNull { it.crewId == p.crewId }
-                        ?.worksAtNight == true
-                    if (p.isNightShift || memberNight) night = true
-                }
-                date > p.endDate && date <= roadEnd -> road += p
+            if (date >= p.startDate && date <= p.endDate) {
+                active += p
+                val memberNight = memberships
+                    .firstOrNull { it.crewId == p.crewId }
+                    ?.worksAtNight == true
+                if (p.isNightShift || memberNight) night = true
             }
         }
 
@@ -48,7 +37,7 @@ class ShiftCalculator(private val calendar: ProductionCalendar) {
             date = date,
             calendarType = calendarType,
             activePeriods = active,
-            roadPeriods = road,
+            roadPeriods = emptyList(),
             isNight = night
         )
     }

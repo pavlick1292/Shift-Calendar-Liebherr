@@ -31,10 +31,9 @@ private fun currentYear(): Int =
 data class MonthHours(
     val month: Int,
     val regularHours: Double,
-    val nightHours: Double,
-    val roadHours: Double
+    val nightHours: Double
 ) {
-    val total: Double get() = regularHours + nightHours + roadHours
+    val total: Double get() = regularHours + nightHours
 }
 
 data class HoursUiState(
@@ -43,7 +42,6 @@ data class HoursUiState(
     val meName: String = "",
     val totalRegular: Double = 0.0,
     val totalNight: Double = 0.0,
-    val totalRoad: Double = 0.0,
     val totalAll: Double = 0.0,
     val norm: Double = 1972.0,
     val monthly: List<MonthHours> = emptyList(),
@@ -101,7 +99,6 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
             meName = me.fullName,
             totalRegular = wh.regularHours,
             totalNight = wh.nightHours,
-            totalRoad = wh.roadHours,
             totalAll = wh.total,
             norm = settings.yearlyNorm,
             monthly = monthly,
@@ -116,17 +113,11 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
         overrides: List<HoursOverride>,
         settings: HoursSettings
     ): List<MonthHours> {
-        val result = MutableList(12) { MonthHours(it + 1, 0.0, 0.0, 0.0) }
-        android.util.Log.d("HoursDebug", "=== computeMonthlyHours year=$year ===")
-        android.util.Log.d("HoursDebug", "memberships = ${memberships.size}: ${memberships.map { it.crewId }}")
-        android.util.Log.d("HoursDebug", "periodsByCrew keys = ${periodsByCrew.keys}, sizes = ${periodsByCrew.map { it.key to it.value.size }}")
-
-        val allMyPeriodsDbg = memberships.flatMap { m -> periodsByCrew[m.crewId].orEmpty() }
-        android.util.Log.d("HoursDebug", "allMyPeriods = ${allMyPeriodsDbg.size}")
-        allMyPeriodsDbg.take(3).forEach {
-            android.util.Log.d("HoursDebug", "  период: ${it.startDate} – ${it.endDate}")
-        }
+        val result = MutableList(12) { MonthHours(it + 1, 0.0, 0.0) }
         val overrideByDate = overrides.associateBy { it.date }
+
+        val allMyPeriods = memberships
+            .flatMap { m -> periodsByCrew[m.crewId].orEmpty().map { m to it } }
 
         var date = LocalDate(year, 1, 1)
         val end = LocalDate(year, 12, 31)
@@ -141,26 +132,16 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
                         result[monthIdx] = result[monthIdx].copy(
                             nightHours = result[monthIdx].nightHours + override.hours
                         )
-                    HoursCategory.ROAD ->
-                        result[monthIdx] = result[monthIdx].copy(
-                            roadHours = result[monthIdx].roadHours + override.hours
-                        )
                     else -> result[monthIdx] = result[monthIdx].copy(
                         regularHours = result[monthIdx].regularHours + override.hours
                     )
                 }
             } else {
                 var done = false
-                for (m in memberships) {
+                for ((member, period) in allMyPeriods) {
                     if (done) break
-                    val periods = periodsByCrew[m.crewId].orEmpty()
-                    val isActive = periods.any { date >= it.startDate && date <= it.endDate }
-                    val isNight = periods.any {
-                        date >= it.startDate && date <= it.endDate &&
-                                (it.isNightShift || m.worksAtNight)
-                    }
-
-                    if (isActive) {
+                    if (date >= period.startDate && date <= period.endDate) {
+                        val isNight = period.isNightShift || member.worksAtNight
                         val h = if (isNight) settings.effectiveNightHours
                                 else settings.effectiveShiftHours
                         result[monthIdx] = if (isNight) {
