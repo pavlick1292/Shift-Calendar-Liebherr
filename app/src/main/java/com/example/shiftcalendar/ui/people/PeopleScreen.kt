@@ -94,7 +94,7 @@ fun PeopleScreen(container: AppContainer, navController: NavController) {
                         label = { Text(filter.profession?.titleRu ?: "Профессия") }
                     )
                     DropdownMenu(expanded, { expanded = false }) {
-                        Profession.entries.forEach { p ->
+                        Profession.sortedByTitle().forEach { p ->
                             DropdownMenuItem(
                                 text = { Text(p.titleRu) },
                                 onClick = { vm.setProfession(p); expanded = false }

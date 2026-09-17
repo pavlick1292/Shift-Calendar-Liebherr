@@ -40,6 +40,10 @@ data class ThemeSettings(
     val dynamicColor: Boolean = false
 )
 
+data class AppearanceSettings(
+    val calendarStyle: CalendarStyle = CalendarStyle.FRAME_BOLD
+)
+
 data class OnboardingSettings(
     val welcomeShown: Boolean = false,
     val shownTabs: Set<String> = emptySet()

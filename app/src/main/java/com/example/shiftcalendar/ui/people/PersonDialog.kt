@@ -67,7 +67,8 @@ fun PersonDialog(
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(profExpanded, { profExpanded = false }) {
-                        Profession.entries.forEach { p ->
+                        // Профессии в алфавитном порядке
+                        Profession.sortedByTitle().forEach { p ->
                             DropdownMenuItem(
                                 text = { Text(p.titleRu) },
                                 onClick = { profession = p; profExpanded = false }

@@ -58,6 +58,10 @@ class SettingsDataStore(
         val DYNAMIC_COLOR = booleanPreferencesKey("theme_dynamic_color")
     }
 
+    private object AppearanceKeys {
+        val CALENDAR_STYLE = stringPreferencesKey("calendar_style")
+    }
+
     private object OnboardingKeys {
         val WELCOME_SHOWN = booleanPreferencesKey("onb_welcome_shown")
         val SHOWN_TABS    = stringSetPreferencesKey("onb_shown_tabs")
@@ -108,6 +112,13 @@ class SettingsDataStore(
         )
     }
 
+    val appearanceSettings: Flow<AppearanceSettings> = context.dataStore.data.map { p ->
+        AppearanceSettings(
+            calendarStyle = p[AppearanceKeys.CALENDAR_STYLE]?.let { CalendarStyle.fromName(it) }
+                ?: CalendarStyle.FRAME_BOLD
+        )
+    }
+
     val onboardingSettings: Flow<OnboardingSettings> = context.dataStore.data.map { p ->
         OnboardingSettings(
             welcomeShown = p[OnboardingKeys.WELCOME_SHOWN] ?: false,
@@ -148,6 +159,10 @@ class SettingsDataStore(
     suspend fun setThemeMode(mode: ThemeMode) =
         context.dataStore.edit { it[ThemeKeys.MODE] = mode.name }
     suspend fun setDynamicColor(value: Boolean) = set(ThemeKeys.DYNAMIC_COLOR, value)
+
+    // Setters — appearance
+    suspend fun setCalendarStyle(style: CalendarStyle) =
+        context.dataStore.edit { it[AppearanceKeys.CALENDAR_STYLE] = style.name }
 
     // Setters — onboarding
     suspend fun setWelcomeShown() {

@@ -8,6 +8,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val CREW_DETAIL = "crew/{crewId}"
     const val PERSON_DETAIL = "person/{personId}"
+    const val CALENDAR_STYLE_TEST = "calendar_style_test"
 
     fun crewDetail(id: Long) = "crew/$id"
     fun personDetail(id: Long) = "person/$id"
