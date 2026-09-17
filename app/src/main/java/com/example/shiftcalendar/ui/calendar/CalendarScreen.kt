@@ -1,15 +1,21 @@
 package com.example.shiftcalendar.ui.calendar
 
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -21,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -31,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +47,7 @@ import com.example.shiftcalendar.data.repository.CrewWithPeriods
 import com.example.shiftcalendar.di.AppContainer
 import com.example.shiftcalendar.export.YearCalendarExporter
 import com.example.shiftcalendar.ui.crews.vmFactory
+import com.example.shiftcalendar.ui.theme.ShiftColors
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -81,10 +90,45 @@ fun CalendarScreen(container: AppContainer) {
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            val pagerState = rememberPagerState(
+                initialPage = state.selectedTab,
+                pageCount = { 1 + state.crews.size }
+            )
+
+            // Tab -> Pager
+            LaunchedEffect(state.selectedTab) {
+                if (pagerState.currentPage != state.selectedTab) {
+                    pagerState.animateScrollToPage(state.selectedTab)
+                }
+            }
+
+            // Pager -> Tab
+            LaunchedEffect(pagerState.currentPage) {
+                if (state.selectedTab != pagerState.currentPage) {
+                    vm.setTab(pagerState.currentPage)
+                }
+            }
+
             if (state.crews.isNotEmpty()) {
                 ScrollableTabRow(
                     selectedTabIndex = state.selectedTab,
-                    edgePadding = 12.dp
+                    edgePadding = 12.dp,
+                    indicator = { tabPositions ->
+                        if (state.selectedTab < tabPositions.size) {
+                            Box(
+                                Modifier
+                                    .tabIndicatorOffset(tabPositions[state.selectedTab])
+                                    .fillMaxWidth()
+                                    .height(3.dp)
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            listOf(ShiftColors.Aurora, ShiftColors.Sunrise)
+                                        ),
+                                        shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
+                                    )
+                            )
+                        }
+                    }
                 ) {
                     Tab(selected = state.selectedTab == 0,
                         onClick = { vm.setTab(0) },
@@ -95,15 +139,6 @@ fun CalendarScreen(container: AppContainer) {
                             text = { Text(cwp.crew.name) })
                     }
                 }
-            }
-
-            val pagerState = rememberPagerState(
-                initialPage = state.selectedTab,
-                pageCount = { 1 + state.crews.size }
-            )
-
-            LaunchedEffect(state.selectedTab) {
-                pagerState.animateScrollToPage(state.selectedTab)
             }
 
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->

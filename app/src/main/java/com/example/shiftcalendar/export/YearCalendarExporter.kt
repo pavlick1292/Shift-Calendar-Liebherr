@@ -136,9 +136,13 @@ object YearCalendarExporter {
             crewPaint.color = color
             canvas.drawRect(RectF(legendX, legendY - 5f, legendX + 8f, legendY + 1f), crewPaint)
 
-            val membersNames = info.members.joinToString(", ") { it.person.fullName }
-            val text = "${info.cwp.crew.name}: $membersNames"
-            canvas.drawText(text.take(130), legendX + 11f, legendY, legendPaint)
+            val membersNames = info.members.joinToString(", ") { shortName(it.person.fullName) }
+            val memberCount = info.members.size
+            val totalDays = info.cwp.periods.sumOf { p ->
+                (p.endDate.toEpochDays() - p.startDate.toEpochDays() + 1).toInt()
+            }
+            val text = "${info.cwp.crew.name} ($memberCount чел, $totalDays дн): $membersNames"
+            canvas.drawText(text.take(160), legendX + 11f, legendY, legendPaint)
         }
     }
 
@@ -205,6 +209,16 @@ object YearCalendarExporter {
             val textColor = if (bg != null) Color.WHITE else COLOR_TEXT
             val p = Paint(dayNumPaint).apply { this.color = textColor }
             canvas.drawText(day.toString(), cx + cellSize / 2, cy + rowH / 2 + 2f, p)
+        }
+    }
+
+    private fun shortName(fullName: String): String {
+        val parts = fullName.trim().split(" ").filter { it.isNotBlank() }
+        return when {
+            parts.isEmpty() -> fullName
+            parts.size == 1 -> parts[0]
+            parts.size == 2 -> parts[0] + " " + parts[1].first() + "."
+            else -> parts[0] + " " + parts[1].first() + "." + parts[2].first() + "."
         }
     }
 
