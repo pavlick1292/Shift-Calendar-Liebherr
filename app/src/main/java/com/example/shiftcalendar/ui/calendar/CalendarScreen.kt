@@ -21,6 +21,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,14 +43,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.shiftcalendar.data.repository.CrewWithPeriods
 import com.example.shiftcalendar.di.AppContainer
+import com.example.shiftcalendar.export.CalendarPngExporter
 import com.example.shiftcalendar.ui.crews.vmFactory
 import com.example.shiftcalendar.ui.theme.ShiftColors
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import androidx.compose.material.icons.outlined.IosShare
-import com.example.shiftcalendar.export.CalendarPngExporter
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(container: AppContainer) {
@@ -63,13 +65,13 @@ fun CalendarScreen(container: AppContainer) {
                     Column {
                         Text("График вахт", fontWeight = FontWeight.SemiBold)
                         Text(
-                            "${state.year}",
+                            state.year.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
-                 actions = {
+                actions = {
                     IconButton(onClick = { vm.setYear(state.year - 1) }) {
                         Icon(Icons.Outlined.ChevronLeft, "Предыдущий год")
                     }
@@ -88,7 +90,7 @@ fun CalendarScreen(container: AppContainer) {
                     }) {
                         Icon(Icons.Outlined.IosShare, "Экспорт")
                     }
-                }                
+                }
             )
         }
     ) { padding ->
@@ -125,22 +127,30 @@ fun CalendarScreen(container: AppContainer) {
 
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 val crewId = if (page == 0) null else state.crews[page - 1].crew.id
-                YearView(year = state.year, crewId = crewId, vm = vm)
+                YearView(
+                    year = state.year,
+                    crewId = crewId,
+                    vm = vm,
+                    crews = state.crews
+                )
             }
         }
     }
 }
 
 @Composable
-private fun YearView(year: Int, crewId: Long?, vm: CalendarViewModel) {
-    // Текущий месяц/год — вычисляем один раз
+private fun YearView(
+    year: Int,
+    crewId: Long?,
+    vm: CalendarViewModel,
+    crews: List<CrewWithPeriods>
+) {
     val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
     val currentMonth = today.monthNumber
     val currentYear = today.year
 
-    // Если показываем текущий год — скроллим к текущему месяцу
     val initialIndex = if (year == currentYear) (currentMonth - 1) else 0
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
 
@@ -149,8 +159,14 @@ private fun YearView(year: Int, crewId: Long?, vm: CalendarViewModel) {
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        itemsIndexed((1..12).toList()) { index, month ->
-            MonthGrid(year = year, month = month, crewId = crewId, vm = vm)
+        itemsIndexed((1..12).toList()) { _, month ->
+            MonthGrid(
+                year = year,
+                month = month,
+                crewId = crewId,
+                vm = vm,
+                crews = crews
+            )
         }
         item { LegendCard() }
     }
@@ -166,8 +182,7 @@ private fun LegendCard() {
             LegendRow(ShiftColors.NightViolet, "Ночь 🌙")
             LegendRow(ShiftColors.RoadAmber, "Дорога 🚗")
             LegendRow(ShiftColors.OffGreen, "Отдых")
-            LegendRow(ShiftColors.HolidayRed, "Праздник")
-            LegendRow(ShiftColors.WeekendGray, "Выходной")
+            LegendRow(ShiftColors.HolidayRed, "Праздник / выходной")
         }
     }
 }

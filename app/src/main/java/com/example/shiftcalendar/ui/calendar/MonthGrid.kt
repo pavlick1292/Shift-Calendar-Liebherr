@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.shiftcalendar.data.db.entity.CrewIcon
+import com.example.shiftcalendar.data.repository.CrewWithPeriods
 import com.example.shiftcalendar.domain.model.CalendarType
 import com.example.shiftcalendar.ui.theme.ShiftColors
 import kotlinx.datetime.LocalDate
@@ -31,7 +32,13 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
-fun MonthGrid(year: Int, month: Int, crewId: Long?, vm: CalendarViewModel) {
+fun MonthGrid(
+    year: Int,
+    month: Int,
+    crewId: Long?,
+    vm: CalendarViewModel,
+    crews: List<CrewWithPeriods>
+) {
     val monthName = java.time.Month.of(month)
         .getDisplayName(TextStyle.FULL_STANDALONE, Locale("ru"))
         .replaceFirstChar { it.uppercase() }
@@ -65,7 +72,7 @@ fun MonthGrid(year: Int, month: Int, crewId: Long?, vm: CalendarViewModel) {
                         if (date == null) {
                             Box(Modifier.aspectRatio(1f))
                         } else {
-                            val status = remember(date, crewId) {
+                            val status = remember(date, crewId, crews) {
                                 if (crewId == null) vm.dayStatusSummary(date)
                                 else vm.dayStatusForCrew(date, crewId)
                             }
