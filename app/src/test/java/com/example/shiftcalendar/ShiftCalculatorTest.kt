@@ -21,25 +21,11 @@ class ShiftCalculatorTest {
         val p = ShiftPeriod(
             id = 1, crewId = 1,
             startDate = LocalDate(2025, 1, 5),
-            endDate = LocalDate(2025, 1, 25),
-            roadDaysBefore = 1, roadDaysAfter = 1
+            endDate = LocalDate(2025, 1, 25)
         )
         val status = calc.dayStatusFor(LocalDate(2025, 1, 10), listOf(p))
         assertThat(status.activePeriods).hasSize(1)
         assertThat(status.isWorking).isTrue()
-    }
-
-    @Test
-    fun `road before period is detected`() {
-        val p = ShiftPeriod(
-            id = 1, crewId = 1,
-            startDate = LocalDate(2025, 1, 5),
-            endDate = LocalDate(2025, 1, 25),
-            roadDaysBefore = 2, roadDaysAfter = 1
-        )
-        val status = calc.dayStatusFor(LocalDate(2025, 1, 3), listOf(p))
-        assertThat(status.roadPeriods).hasSize(1)
-        assertThat(status.isOnRoad).isTrue()
     }
 
     @Test
@@ -56,4 +42,3 @@ class ShiftCalculatorTest {
         assertThat(status.activePeriods).hasSize(2)
     }
 }
-

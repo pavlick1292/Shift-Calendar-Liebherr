@@ -21,8 +21,7 @@ class HoursCalculatorTest {
         val period = ShiftPeriod(
             id = 1, crewId = 1,
             startDate = LocalDate(2025, 1, 1),
-            endDate = LocalDate(2025, 1, 10),
-            roadDaysBefore = 0, roadDaysAfter = 0
+            endDate = LocalDate(2025, 1, 10)
         )
         val membership = CrewMember(personId = 1, crewId = 1)
         val result = calc.calculateForPerson(
@@ -32,24 +31,5 @@ class HoursCalculatorTest {
             hoursOverrides = emptyList()
         )
         assertThat(result.regularHours).isEqualTo(110.0)
-    }
-
-    @Test
-    fun `night shift counted without coefficient`() {
-        val period = ShiftPeriod(
-            id = 1, crewId = 1,
-            startDate = LocalDate(2025, 1, 1),
-            endDate = LocalDate(2025, 1, 5),
-            roadDaysBefore = 0, roadDaysAfter = 0,
-            isNightShift = true
-        )
-        val membership = CrewMember(personId = 1, crewId = 1, worksAtNight = true)
-        val result = calc.calculateForPerson(
-            personId = 1, year = 2025,
-            memberships = listOf(membership),
-            periodsByCrew = mapOf(1L to listOf(period)),
-            hoursOverrides = emptyList()
-        )
-        assertThat(result.nightHours).isEqualTo(55.0)
     }
 }

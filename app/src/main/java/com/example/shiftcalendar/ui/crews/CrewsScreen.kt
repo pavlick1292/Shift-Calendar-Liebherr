@@ -166,19 +166,22 @@ private fun CrewCard(
                     .background(parseColor(cwp.crew.colorHex)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    icon.symbol,
+                Text(icon.symbol,
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White
-                )
+                    color = Color.White)
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(cwp.crew.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(cwp.crew.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(2.dp))
                 Text(
                     buildString {
                         append("${cwp.periods.size} ${pluralVakhta(cwp.periods.size)}")
+                        if (cwp.memberCount > 0) {
+                            append(" · ${cwp.memberCount} ${pluralPerson(cwp.memberCount)}")
+                        }
                         if (cwp.periods.isNotEmpty()) {
                             append(" · ${cwp.periods.first().startDate} – ${cwp.periods.last().endDate}")
                         }
@@ -202,20 +205,16 @@ private fun EmptyCrewsState(modifier: Modifier, onCreate: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            Icons.Outlined.Groups, null,
+        Icon(Icons.Outlined.Groups, null,
             modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        )
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
         Spacer(Modifier.height(16.dp))
         Text("Пока нет составов", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(6.dp))
-        Text(
-            "Создайте первый состав и добавьте в него вахты",
+        Text("Создайте первый состав и добавьте в него вахты",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+            textAlign = TextAlign.Center)
         Spacer(Modifier.height(20.dp))
         Button(onClick = onCreate) {
             Icon(Icons.Outlined.Add, null)
@@ -252,7 +251,6 @@ private fun CrewEditDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Spacer(Modifier.height(16.dp))
                 Text("Цвет", style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.height(8.dp))
@@ -293,12 +291,10 @@ private fun CrewEditDialog(
                                 .clickable { iconType = icon.name },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                icon.symbol,
+                            Text(icon.symbol,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = parseColor(colorHex),
-                                fontWeight = FontWeight.Bold
-                            )
+                                fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -326,4 +322,10 @@ internal fun pluralVakhta(n: Int): String = when {
     n % 10 == 1 && n % 100 != 11 -> "вахта"
     n % 10 in 2..4 && n % 100 !in 12..14 -> "вахты"
     else -> "вахт"
+}
+
+internal fun pluralPerson(n: Int): String = when {
+    n % 10 == 1 && n % 100 != 11 -> "человек"
+    n % 10 in 2..4 && n % 100 !in 12..14 -> "человека"
+    else -> "человек"
 }

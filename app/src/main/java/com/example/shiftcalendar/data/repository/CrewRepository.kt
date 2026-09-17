@@ -1,6 +1,7 @@
 package com.example.shiftcalendar.data.repository
 
 import com.example.shiftcalendar.data.db.dao.CrewDao
+import com.example.shiftcalendar.data.db.dao.CrewMemberDao
 import com.example.shiftcalendar.data.db.dao.ShiftPeriodDao
 import com.example.shiftcalendar.data.db.entity.Crew
 import com.example.shiftcalendar.data.db.entity.ShiftPeriod
@@ -12,25 +13,30 @@ import kotlinx.datetime.plus
 
 data class CrewWithPeriods(
     val crew: Crew,
-    val periods: List<ShiftPeriod>
+    val periods: List<ShiftPeriod>,
+    val memberCount: Int = 0
 )
 
 class CrewRepository(
     private val crewDao: CrewDao,
-    private val periodDao: ShiftPeriodDao
+    private val periodDao: ShiftPeriodDao,
+    private val memberDao: CrewMemberDao
 ) {
     fun observeCrews(): Flow<List<Crew>> = crewDao.observeAll()
 
     fun observeCrewsWithPeriods(): Flow<List<CrewWithPeriods>> =
         combine(
             crewDao.observeAll(),
-            periodDao.observeAll()
-        ) { crews, periods ->
-            val grouped = periods.groupBy { it.crewId }
+            periodDao.observeAll(),
+            memberDao.observeAll()
+        ) { crews, periods, members ->
+            val periodsByCrew = periods.groupBy { it.crewId }
+            val memberCountByCrew = members.groupBy { it.crewId }.mapValues { it.value.size }
             crews.map { crew ->
                 CrewWithPeriods(
                     crew = crew,
-                    periods = grouped[crew.id].orEmpty().sortedBy { it.startDate }
+                    periods = periodsByCrew[crew.id].orEmpty().sortedBy { it.startDate },
+                    memberCount = memberCountByCrew[crew.id] ?: 0
                 )
             }
         }
@@ -72,7 +78,7 @@ class CrewRepository(
                 crewId = crewId,
                 startDate = cursor,
                 endDate = end,
-                label = "Вахта №${i + 1}"
+                label = "Вахта N" + (i + 1)
             )
             cursor = end.plus(DatePeriod(days = restDays + 1))
         }

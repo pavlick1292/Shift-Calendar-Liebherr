@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -56,7 +55,6 @@ import com.example.shiftcalendar.data.db.dao.PersonWithMembership
 import com.example.shiftcalendar.data.db.entity.ShiftPeriod
 import com.example.shiftcalendar.di.AppContainer
 import com.example.shiftcalendar.export.ShiftPeriodPdfExporter
-import com.example.shiftcalendar.export.ShiftSchedulePdfExporter
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -110,49 +108,36 @@ fun CrewDetailScreen(
     }
 
     if (showExportDialog) {
-        ExportFormatDialog(
+        CrewExportDialog(
             onDismiss = { showExportDialog = false },
-            onListExport = {
+            onExport = {
                 showExportDialog = false
-                val file = ShiftPeriodPdfExporter.export(
-                    context = container.appContext,
-                    crewName = state.crew?.name ?: "Состав",
-                    periods = state.periods
+                val crewName = state.crew?.name ?: "Состав"
+                val crews = listOf(
+                    ShiftPeriodPdfExporter.CrewData(
+                        name = crewName,
+                        periods = state.periods
+                    )
                 )
+                val file = ShiftPeriodPdfExporter.export(container.appContext, crews)
                 ShiftPeriodPdfExporter.share(container.appContext, file)
-            },
-            onScheduleExport = {
-                showExportDialog = false
-                val year = Clock.System.now()
-                    .toLocalDateTime(TimeZone.currentSystemDefault()).year
-                val calendar = container.calendarRepository.get(year)
-                val file = ShiftSchedulePdfExporter.export(
-                    context = container.appContext,
-                    crewName = state.crew?.name ?: "Состав",
-                    periods = state.periods,
-                    members = state.members,
-                    year = year,
-                    calendar = calendar
-                )
-                ShiftSchedulePdfExporter.share(container.appContext, file)
             }
         )
     }
 }
 
 @Composable
-private fun ExportFormatDialog(
+private fun CrewExportDialog(
     onDismiss: () -> Unit,
-    onListExport: () -> Unit,
-    onScheduleExport: () -> Unit
+    onExport: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Формат PDF") },
+        title = { Text("Экспорт PDF") },
         text = {
             Column {
                 Card(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onListExport)
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onExport)
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text("📋 Список вахт",
@@ -160,20 +145,6 @@ private fun ExportFormatDialog(
                             fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(4.dp))
                         Text("Таблица с датами и количеством дней.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onScheduleExport)
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("📅 Расписание по месяцам",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
-                        Text("12 страниц, кто когда заступает. Удобно распечатать.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

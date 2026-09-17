@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,8 +44,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shiftcalendar.di.AppContainer
+import com.example.shiftcalendar.export.MyShiftsExporter
 import com.example.shiftcalendar.ui.crews.vmFactory
 import com.example.shiftcalendar.ui.theme.ShiftColors
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,6 +56,7 @@ import java.util.Locale
 fun HoursScreen(container: AppContainer, navController: NavController) {
     val vm: HoursViewModel = viewModel(factory = vmFactory { HoursViewModel(container) })
     val state by vm.state.collectAsStateWithLifecycle()
+    var showExportDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -67,10 +75,14 @@ fun HoursScreen(container: AppContainer, navController: NavController) {
                     IconButton(onClick = { vm.setYear(state.year - 1) }) {
                         Icon(Icons.Outlined.ChevronLeft, "Назад")
                     }
-                    Text(state.year.toString(),
-                        style = MaterialTheme.typography.titleMedium)
+                    Text(state.year.toString(), style = MaterialTheme.typography.titleMedium)
                     IconButton(onClick = { vm.setYear(state.year + 1) }) {
                         Icon(Icons.Outlined.ChevronRight, "Вперёд")
+                    }
+                    if (state.hasMe) {
+                        IconButton(onClick = { showExportDialog = true }) {
+                            Icon(Icons.Outlined.IosShare, "Экспорт")
+                        }
                     }
                 }
             )
@@ -97,6 +109,51 @@ fun HoursScreen(container: AppContainer, navController: NavController) {
             }
         }
     }
+
+    if (showExportDialog) {
+        HoursExportDialog(
+            onDismiss = { showExportDialog = false },
+            onPdf = {
+                showExportDialog = false
+                exportMyShifts(container, state, format = "pdf")
+            },
+            onPng = {
+                showExportDialog = false
+                exportMyShifts(container, state, format = "png")
+            }
+        )
+    }
+}
+
+private fun exportMyShifts(
+    container: AppContainer,
+    state: HoursUiState,
+    format: String
+) {
+    kotlinx.coroutines.GlobalScope.launch {
+        val people = container.personRepository.observePeople().first()
+        val me = people.firstOrNull { it.isMe } ?: return@launch
+        val crewsWithPeriods = container.crewRepository.observeCrewsWithPeriods().first()
+        val memberships = container.personRepository.getMembershipsOfPerson(me.id)
+        val myCrewIds = memberships.map { it.crewId }.toSet()
+        val myPeriods = crewsWithPeriods
+            .filter { it.crew.id in myCrewIds }
+            .flatMap { it.periods }
+            .sortedBy { it.startDate }
+
+        val file = if (format == "pdf") {
+            MyShiftsExporter.exportPdf(container.appContext, me, state.year, myPeriods)
+        } else {
+            MyShiftsExporter.exportPng(container.appContext, me, state.year, myPeriods)
+        }
+
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            MyShiftsExporter.share(
+                container.appContext, file,
+                if (format == "pdf") "application/pdf" else "image/png"
+            )
+        }
+    }
 }
 
 @Composable
@@ -106,15 +163,12 @@ private fun EmptyState(modifier: Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Не отмечен \"Это я\"",
-            style = MaterialTheme.typography.titleMedium)
+        Text("Не отмечен \"Это я\"", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
-        Text(
-            "Открой вкладку «Люди» → отметь себя галочкой «Это я» → тогда здесь появятся твои часы.",
+        Text("Открой вкладку «Люди» → отметь себя галочкой «Это я».",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+            textAlign = TextAlign.Center)
     }
 }
 
@@ -146,31 +200,7 @@ private fun SummaryCard(state: HoursUiState) {
                 color = ShiftColors.WorkBlue,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
-            Spacer(Modifier.height(12.dp))
-            StatCell("Обычные", state.totalRegular, ShiftColors.WorkBlue)
-            if (state.totalAll > state.norm) {
-                val overText = String.format(Locale.US, "%.0f", state.totalAll - state.norm)
-                Spacer(Modifier.height(8.dp))
-                Text("Переработка: +$overText ч",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ShiftColors.HolidayRed)
-            }
         }
-    }
-}
-
-@Composable
-private fun StatCell(label: String, value: Double, color: Color) {
-    val valueText = String.format(Locale.US, "%.0f", value)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).clip(MaterialTheme.shapes.extraSmall).background(color))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.width(6.dp))
-        Text("$valueText ч",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold)
     }
 }
 

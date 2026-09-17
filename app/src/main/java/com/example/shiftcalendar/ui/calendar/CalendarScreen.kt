@@ -26,6 +26,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,8 +37,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.shiftcalendar.data.repository.CrewWithPeriods
 import com.example.shiftcalendar.di.AppContainer
-import com.example.shiftcalendar.export.CalendarPngExporter
+import com.example.shiftcalendar.export.YearCalendarExporter
 import com.example.shiftcalendar.ui.crews.vmFactory
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -44,6 +50,8 @@ import kotlinx.datetime.toLocalDateTime
 fun CalendarScreen(container: AppContainer) {
     val vm: CalendarViewModel = viewModel(factory = vmFactory { CalendarViewModel(container) })
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var showExportDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -51,11 +59,9 @@ fun CalendarScreen(container: AppContainer) {
                 title = {
                     Column {
                         Text("График вахт", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            state.year.toString(),
+                        Text(state.year.toString(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 actions = {
@@ -65,40 +71,28 @@ fun CalendarScreen(container: AppContainer) {
                     IconButton(onClick = { vm.setYear(state.year + 1) }) {
                         Icon(Icons.Outlined.ChevronRight, "Следующий год")
                     }
-                    IconButton(onClick = {
-                        val calendar = container.calendarRepository.get(state.year)
-                        val file = CalendarPngExporter.export(
-                            context = container.appContext,
-                            year = state.year,
-                            crews = state.crews,
-                            calendar = calendar
-                        )
-                        CalendarPngExporter.share(container.appContext, file)
-                    }) {
-                        Icon(Icons.Outlined.IosShare, "Экспорт")
+                    if (state.crews.isNotEmpty()) {
+                        IconButton(onClick = { showExportDialog = true }) {
+                            Icon(Icons.Outlined.IosShare, "Экспорт")
+                        }
                     }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-
             if (state.crews.isNotEmpty()) {
                 ScrollableTabRow(
                     selectedTabIndex = state.selectedTab,
                     edgePadding = 12.dp
                 ) {
-                    Tab(
-                        selected = state.selectedTab == 0,
+                    Tab(selected = state.selectedTab == 0,
                         onClick = { vm.setTab(0) },
-                        text = { Text("Сводный") }
-                    )
+                        text = { Text("Сводный") })
                     state.crews.forEachIndexed { index, cwp ->
-                        Tab(
-                            selected = state.selectedTab == index + 1,
+                        Tab(selected = state.selectedTab == index + 1,
                             onClick = { vm.setTab(index + 1) },
-                            text = { Text(cwp.crew.name) }
-                        )
+                            text = { Text(cwp.crew.name) })
                     }
                 }
             }
@@ -114,14 +108,53 @@ fun CalendarScreen(container: AppContainer) {
 
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 val crewId = if (page == 0) null else state.crews[page - 1].crew.id
-                YearView(
-                    year = state.year,
-                    crewId = crewId,
-                    vm = vm,
-                    crews = state.crews
-                )
+                YearView(year = state.year, crewId = crewId, vm = vm, crews = state.crews)
             }
         }
+    }
+
+    if (showExportDialog) {
+        CalendarExportDialog(
+            onDismiss = { showExportDialog = false },
+            onYearPdf = {
+                showExportDialog = false
+                scope.launch {
+                    val year = Clock.System.now()
+                        .toLocalDateTime(TimeZone.currentSystemDefault()).year
+                    val calendar = container.calendarRepository.get(year)
+                    val crewsInfo = buildCrewsInfo(container, state.crews)
+                    val file = YearCalendarExporter.exportPdf(
+                        container.appContext, year, crewsInfo, calendar
+                    )
+                    YearCalendarExporter.share(container.appContext, file, "application/pdf")
+                }
+            },
+            onYearPng = {
+                showExportDialog = false
+                scope.launch {
+                    val year = Clock.System.now()
+                        .toLocalDateTime(TimeZone.currentSystemDefault()).year
+                    val calendar = container.calendarRepository.get(year)
+                    val crewsInfo = buildCrewsInfo(container, state.crews)
+                    val file = YearCalendarExporter.exportPng(
+                        container.appContext, year, crewsInfo, calendar
+                    )
+                    YearCalendarExporter.share(container.appContext, file, "image/png")
+                }
+            }
+        )
+    }
+}
+
+private suspend fun buildCrewsInfo(
+    container: AppContainer,
+    crews: List<CrewWithPeriods>
+): List<YearCalendarExporter.CrewInfo> {
+    return crews.map { cwp ->
+        val members = container.personRepository
+            .observeMembersOfCrew(cwp.crew.id)
+            .first()
+        YearCalendarExporter.CrewInfo(cwp, members)
     }
 }
 
@@ -133,8 +166,7 @@ private fun YearView(
     crews: List<CrewWithPeriods>
 ) {
     val today = Clock.System.now()
-        .toLocalDateTime(TimeZone.currentSystemDefault())
-        .date
+        .toLocalDateTime(TimeZone.currentSystemDefault()).date
     val currentMonth = today.monthNumber
     val currentYear = today.year
 
@@ -147,13 +179,7 @@ private fun YearView(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         itemsIndexed((1..12).toList()) { _, month ->
-            MonthGrid(
-                year = year,
-                month = month,
-                crewId = crewId,
-                vm = vm,
-                crews = crews
-            )
+            MonthGrid(year = year, month = month, crewId = crewId, vm = vm, crews = crews)
         }
     }
 }

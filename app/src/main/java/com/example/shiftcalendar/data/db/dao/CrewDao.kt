@@ -13,6 +13,9 @@ interface CrewDao {
     @Query("SELECT * FROM crews WHERE isArchived = 0 ORDER BY createdAt")
     fun observeAll(): Flow<List<Crew>>
 
+    @Query("SELECT * FROM crews WHERE isArchived = 0 ORDER BY createdAt")
+    suspend fun getAllOnce(): List<Crew>
+
     @Query("SELECT * FROM crews WHERE id = :id")
     suspend fun getById(id: Long): Crew?
 

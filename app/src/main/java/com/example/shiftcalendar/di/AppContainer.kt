@@ -16,8 +16,12 @@ class AppContainer(
     val workManager: WorkManager,
     val appContext: Context
 ) {
-    val crewRepository: CrewRepository by lazy { CrewRepository(db.crewDao(), db.shiftPeriodDao()) }
-    val personRepository: PersonRepository by lazy { PersonRepository(db.personDao(), db.crewMemberDao()) }
+    val crewRepository: CrewRepository by lazy {
+        CrewRepository(db.crewDao(), db.shiftPeriodDao(), db.crewMemberDao())
+    }
+    val personRepository: PersonRepository by lazy {
+        PersonRepository(db.personDao(), db.crewMemberDao())
+    }
     val overrideRepository: OverrideRepository by lazy {
         OverrideRepository(db.dayOverrideDao(), db.hoursOverrideDao())
     }
@@ -26,4 +30,3 @@ class AppContainer(
         NotificationScheduler(appContext, workManager, settings)
     }
 }
-

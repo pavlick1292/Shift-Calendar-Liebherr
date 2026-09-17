@@ -18,14 +18,8 @@ interface ShiftPeriodDao {
     @Query("SELECT * FROM shift_periods ORDER BY startDate")
     fun observeAll(): Flow<List<ShiftPeriod>>
 
-    @Query("SELECT * FROM shift_periods WHERE startDate <= :date AND endDate >= :date")
-    suspend fun findActiveAt(date: LocalDate): List<ShiftPeriod>
-
-    @Query("SELECT * FROM shift_periods WHERE startDate >= :from AND startDate <= :to ORDER BY startDate")
-    suspend fun findStartingBetween(from: LocalDate, to: LocalDate): List<ShiftPeriod>
-
-    @Query("SELECT * FROM shift_periods WHERE endDate >= :from AND endDate <= :to ORDER BY endDate")
-    suspend fun findEndingBetween(from: LocalDate, to: LocalDate): List<ShiftPeriod>
+    @Query("SELECT * FROM shift_periods ORDER BY startDate")
+    suspend fun getAllOnce(): List<ShiftPeriod>
 
     @Insert
     suspend fun insert(period: ShiftPeriod): Long

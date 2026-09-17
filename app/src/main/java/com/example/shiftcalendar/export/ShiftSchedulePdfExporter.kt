@@ -18,6 +18,12 @@ import java.util.Locale
 
 object ShiftSchedulePdfExporter {
 
+    data class CrewData(
+        val name: String,
+        val periods: List<ShiftPeriod>,
+        val members: List<PersonWithMembership>
+    )
+
     private const val COLOR_WORK = 0xFF3B82F6.toInt()
     private const val COLOR_OFF = 0xFFE5E7EB.toInt()
     private const val COLOR_HOLIDAY = 0xFFFEE2E2.toInt()
@@ -27,23 +33,25 @@ object ShiftSchedulePdfExporter {
 
     fun export(
         context: Context,
-        crewName: String,
-        periods: List<ShiftPeriod>,
-        members: List<PersonWithMembership>,
+        crews: List<CrewData>,
         year: Int,
         calendar: ProductionCalendar
     ): File {
         val doc = PdfDocument()
-        for (month in 1..12) {
-            val pageInfo = PdfDocument.PageInfo.Builder(842, 595, month).create()
-            val page = doc.startPage(pageInfo)
-            drawMonthPage(page.canvas, crewName, year, month, periods, members, calendar)
-            doc.finishPage(page)
+        var pageNum = 1
+
+        for (crew in crews) {
+            for (month in 1..12) {
+                val pageInfo = PdfDocument.PageInfo.Builder(842, 595, pageNum).create()
+                val page = doc.startPage(pageInfo)
+                drawMonthPage(page.canvas, crew, year, month, calendar)
+                doc.finishPage(page)
+                pageNum++
+            }
         }
 
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
-        val safeName = crewName.replace(Regex("[^a-zA-Zа-яА-Я0-9]"), "_")
-        val file = File(dir, "schedule_${safeName}_$year.pdf")
+        val file = File(dir, "schedule_all_${year}_${System.currentTimeMillis()}.pdf")
         FileOutputStream(file).use { doc.writeTo(it) }
         doc.close()
         return file
@@ -51,9 +59,8 @@ object ShiftSchedulePdfExporter {
 
     private fun drawMonthPage(
         canvas: android.graphics.Canvas,
-        crewName: String, year: Int, month: Int,
-        periods: List<ShiftPeriod>,
-        members: List<PersonWithMembership>,
+        crew: CrewData,
+        year: Int, month: Int,
         calendar: ProductionCalendar
     ) {
         val titlePaint = Paint().apply { isAntiAlias = true; textSize = 16f; isFakeBoldText = true; color = COLOR_TEXT }
@@ -66,7 +73,7 @@ object ShiftSchedulePdfExporter {
         val holidayBg = Paint().apply { isAntiAlias = true; color = COLOR_HOLIDAY }
         val circlePaint = Paint().apply { isAntiAlias = true }
 
-        canvas.drawText(crewName, 30f, 30f, titlePaint)
+        canvas.drawText(crew.name, 30f, 30f, titlePaint)
         val monthName = java.time.Month.of(month)
             .getDisplayName(java.time.format.TextStyle.FULL_STANDALONE, Locale("ru"))
             .replaceFirstChar { it.uppercase() }
@@ -90,7 +97,7 @@ object ShiftSchedulePdfExporter {
             val date = kotlinx.datetime.LocalDate(year, month, day)
             val isRed = calendar.isHoliday(date) || calendar.isWeekend(date)
             if (isRed) {
-                canvas.drawRect(RectF(x, tableY, x + dayColWidth, tableY + rowHeight * (members.size + 1)), holidayBg)
+                canvas.drawRect(RectF(x, tableY, x + dayColWidth, tableY + rowHeight * (crew.members.size + 1)), holidayBg)
             }
             val dayPaint = Paint(dayHeaderPaint).apply { color = if (isRed) 0xFFEF4444.toInt() else COLOR_TEXT }
             canvas.drawText(day.toString(), cx, headerY + 4f, dayPaint)
@@ -109,7 +116,7 @@ object ShiftSchedulePdfExporter {
         }
 
         var y = tableY + rowHeight
-        val sortedMembers = members.sortedBy { it.person.fullName }
+        val sortedMembers = crew.members.sortedBy { it.person.fullName }
 
         for (m in sortedMembers) {
             val nameDisplay = if (m.person.fullName.length > 20) m.person.fullName.take(18) + ".." else m.person.fullName
@@ -119,7 +126,7 @@ object ShiftSchedulePdfExporter {
                 val x = tableX + nameColWidth + (day - 1) * dayColWidth
                 val cx = x + dayColWidth / 2
                 val date = kotlinx.datetime.LocalDate(year, month, day)
-                val isActive = periods.any { date >= it.startDate && date <= it.endDate }
+                val isActive = crew.periods.any { date >= it.startDate && date <= it.endDate }
 
                 if (isActive) {
                     circlePaint.color = COLOR_WORK
