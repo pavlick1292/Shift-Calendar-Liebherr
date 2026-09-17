@@ -49,8 +49,10 @@ object CsvExporter {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Отправить CSV"))
-    }
+val chooser = Intent.createChooser(intent, "Отправить CSV").apply {
+    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
+context.startActivity(chooser)    }
 
     private fun fmt(v: Double): String = String.format(Locale.US, "%.1f", v)
 }

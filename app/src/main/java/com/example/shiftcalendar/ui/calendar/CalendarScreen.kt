@@ -48,7 +48,8 @@ import com.example.shiftcalendar.ui.theme.ShiftColors
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-
+import androidx.compose.material.icons.outlined.IosShare
+import com.example.shiftcalendar.export.CalendarPngExporter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(container: AppContainer) {
@@ -68,14 +69,26 @@ fun CalendarScreen(container: AppContainer) {
                         )
                     }
                 },
-                actions = {
+                 actions = {
                     IconButton(onClick = { vm.setYear(state.year - 1) }) {
                         Icon(Icons.Outlined.ChevronLeft, "Предыдущий год")
                     }
                     IconButton(onClick = { vm.setYear(state.year + 1) }) {
                         Icon(Icons.Outlined.ChevronRight, "Следующий год")
                     }
-                }
+                    IconButton(onClick = {
+                        val calendar = container.calendarRepository.get(state.year)
+                        val file = CalendarPngExporter.export(
+                            context = container.appContext,
+                            year = state.year,
+                            crews = state.crews,
+                            calendar = calendar
+                        )
+                        CalendarPngExporter.share(container.appContext, file)
+                    }) {
+                        Icon(Icons.Outlined.IosShare, "Экспорт")
+                    }
+                }                
             )
         }
     ) { padding ->

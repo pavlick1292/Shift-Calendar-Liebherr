@@ -68,8 +68,10 @@ object PdfExporter {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Отправить PDF"))
-    }
+val chooser = Intent.createChooser(intent, "Отправить PDF").apply {
+    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
+context.startActivity(chooser)    }
 
     private fun fmt(v: Double) = String.format(Locale.US, "%.1f", v)
 }

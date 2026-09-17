@@ -1,6 +1,5 @@
 package com.example.shiftcalendar.ui.crews
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.shiftcalendar.data.db.entity.Crew
+import com.example.shiftcalendar.data.db.entity.CrewIcon
 import com.example.shiftcalendar.data.repository.CrewWithPeriods
 import com.example.shiftcalendar.di.AppContainer
 import com.example.shiftcalendar.ui.navigation.Routes
@@ -105,7 +106,10 @@ fun CrewsScreen(container: AppContainer, navController: NavController) {
         CrewEditDialog(
             crew = null,
             onDismiss = { showCreateDialog = false },
-            onSave = { name, color -> vm.createCrew(name, color); showCreateDialog = false }
+            onSave = { name, color, icon ->
+                vm.createCrew(name, color, icon)
+                showCreateDialog = false
+            }
         )
     }
 
@@ -113,8 +117,8 @@ fun CrewsScreen(container: AppContainer, navController: NavController) {
         CrewEditDialog(
             crew = crew,
             onDismiss = { editingCrew = null },
-            onSave = { name, color ->
-                vm.updateCrew(crew.copy(name = name, colorHex = color))
+            onSave = { name, color, icon ->
+                vm.updateCrew(crew.copy(name = name, colorHex = color, iconType = icon))
                 editingCrew = null
             }
         )
@@ -144,12 +148,7 @@ private fun CrewCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.tween(200),
-        label = "crewCard"
-    )
-
+    val icon = CrewIcon.fromName(cwp.crew.iconType)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -167,7 +166,11 @@ private fun CrewCard(
                     .background(parseColor(cwp.crew.colorHex)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Outlined.Groups, null, tint = Color.White)
+                Text(
+                    icon.symbol,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White
+                )
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -226,12 +229,16 @@ private fun EmptyCrewsState(modifier: Modifier, onCreate: () -> Unit) {
 private fun CrewEditDialog(
     crew: Crew?,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (name: String, colorHex: String, iconType: String) -> Unit
 ) {
     var name by remember { mutableStateOf(crew?.name ?: "") }
     var colorHex by remember { mutableStateOf(crew?.colorHex ?: "#3B82F6") }
+    var iconType by remember { mutableStateOf(crew?.iconType ?: "CIRCLE") }
 
-    val palette = listOf("#3B82F6", "#8B5CF6", "#F59E0B", "#10B981", "#EF4444", "#EC4899", "#14B8A6", "#6366F1")
+    val palette = listOf(
+        "#3B82F6", "#8B5CF6", "#F59E0B", "#10B981",
+        "#EF4444", "#EC4899", "#14B8A6", "#6366F1"
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -245,6 +252,7 @@ private fun CrewEditDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Spacer(Modifier.height(16.dp))
                 Text("Цвет", style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.height(8.dp))
@@ -263,12 +271,45 @@ private fun CrewEditDialog(
                         }
                     }
                 }
+
+                Spacer(Modifier.height(16.dp))
+                Text("Иконка на календаре", style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CrewIcon.entries.forEach { icon ->
+                        val selected = icon.name == iconType
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(
+                                    if (selected) parseColor(colorHex).copy(alpha = 0.25f)
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                .clickable { iconType = icon.name },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                icon.symbol,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = parseColor(colorHex),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { if (name.isNotBlank()) onSave(name.trim(), colorHex) },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank(),
+                onClick = {
+                    if (name.isNotBlank()) onSave(name.trim(), colorHex, iconType)
+                }
             ) { Text("Сохранить") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }

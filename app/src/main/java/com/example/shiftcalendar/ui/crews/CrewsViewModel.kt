@@ -16,9 +16,11 @@ class CrewsViewModel(private val container: AppContainer) : ViewModel() {
         container.crewRepository.observeCrewsWithPeriods()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun createCrew(name: String, colorHex: String) {
+    fun createCrew(name: String, colorHex: String, iconType: String = "CIRCLE") {
         viewModelScope.launch {
-            container.crewRepository.createCrew(Crew(name = name, colorHex = colorHex))
+            container.crewRepository.createCrew(
+                Crew(name = name, colorHex = colorHex, iconType = iconType)
+            )
         }
     }
 

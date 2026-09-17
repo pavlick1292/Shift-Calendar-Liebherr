@@ -2,10 +2,10 @@ package com.example.shiftcalendar.ui.calendar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.shiftcalendar.data.calendar.ProductionCalendar
 import com.example.shiftcalendar.data.repository.CrewWithPeriods
 import com.example.shiftcalendar.di.AppContainer
-import com.example.shiftcalendar.domain.ShiftCalculator
-import com.example.shiftcalendar.domain.model.DayStatus
+import com.example.shiftcalendar.domain.model.CalendarType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +18,21 @@ import kotlinx.datetime.toLocalDateTime
 
 private fun currentYear(): Int =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
+
+data class ActiveCrew(
+    val crewId: Long,
+    val crewName: String,
+    val colorHex: String,
+    val iconType: String,
+    val isNight: Boolean
+)
+
+data class DayStatus(
+    val date: LocalDate,
+    val calendarType: CalendarType,
+    val activeCrews: List<ActiveCrew>,
+    val totalActiveCount: Int
+)
 
 data class CalendarUiState(
     val year: Int = currentYear(),
@@ -42,18 +57,71 @@ class CalendarViewModel(private val container: AppContainer) : ViewModel() {
     fun setYear(year: Int) { _year.value = year }
     fun setTab(index: Int) { _selectedTab.value = index }
 
-    fun dayStatus(date: LocalDate, crewId: Long?): DayStatus {
+    fun dayStatusForCrew(date: LocalDate, crewId: Long): DayStatus {
         val state = uiState.value
         val calendar = container.calendarRepository.get(state.year)
-        val calc = ShiftCalculator(calendar)
+        val cwp = state.crews.firstOrNull { it.crew.id == crewId }
+            ?: return emptyStatus(date, calendar)
 
-        val periods = if (crewId == null) {
-            state.crews.flatMap { it.periods }
-        } else {
-            state.crews.firstOrNull { it.crew.id == crewId }?.periods.orEmpty()
+        val isActive = cwp.periods.any { date >= it.startDate && date <= it.endDate }
+        val activeCrews = if (isActive) {
+            listOf(
+                ActiveCrew(
+                    crewId = cwp.crew.id,
+                    crewName = cwp.crew.name,
+                    colorHex = cwp.crew.colorHex,
+                    iconType = cwp.crew.iconType,
+                    isNight = cwp.periods.any { p ->
+                        date >= p.startDate && date <= p.endDate && p.isNightShift
+                    }
+                )
+            )
+        } else emptyList()
+
+        return DayStatus(
+            date = date,
+            calendarType = typeFor(date, calendar),
+            activeCrews = activeCrews,
+            totalActiveCount = activeCrews.size
+        )
+    }
+
+    fun dayStatusSummary(date: LocalDate): DayStatus {
+        val state = uiState.value
+        val calendar = container.calendarRepository.get(state.year)
+
+        val active = mutableListOf<ActiveCrew>()
+        for (cwp in state.crews) {
+            val periods = cwp.periods.filter { date >= it.startDate && date <= it.endDate }
+            if (periods.isNotEmpty()) {
+                active += ActiveCrew(
+                    crewId = cwp.crew.id,
+                    crewName = cwp.crew.name,
+                    colorHex = cwp.crew.colorHex,
+                    iconType = cwp.crew.iconType,
+                    isNight = periods.any { it.isNightShift }
+                )
+            }
         }
 
-        return calc.dayStatusFor(date, periods)
+        return DayStatus(
+            date = date,
+            calendarType = typeFor(date, calendar),
+            activeCrews = active,
+            totalActiveCount = active.size
+        )
     }
-}
 
+    private fun typeFor(date: LocalDate, calendar: ProductionCalendar): CalendarType = when {
+        calendar.isHoliday(date) -> CalendarType.HOLIDAY
+        calendar.isWeekend(date) -> CalendarType.WEEKEND
+        else -> CalendarType.WORK_DAY
+    }
+
+    private fun emptyStatus(date: LocalDate, calendar: ProductionCalendar) = DayStatus(
+        date = date,
+        calendarType = typeFor(date, calendar),
+        activeCrews = emptyList(),
+        totalActiveCount = 0
+    )
+}
