@@ -103,14 +103,11 @@ fun PersonDetailScreen(
                     color = MaterialTheme.colorScheme.primary)
             }
 
-            items(state.crewNames, key = { it.first }) { (crewId, crewName) ->
+            items(state.crewNames, key = { it.first }) { (_, crewName) ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(crewName, Modifier.weight(1f),
                             style = MaterialTheme.typography.titleMedium)
-                        if (state.nightInCrew[crewId] == true) {
-                            Text("🌙", style = MaterialTheme.typography.titleMedium)
-                        }
                     }
                 }
             }
@@ -126,8 +123,6 @@ fun PersonDetailScreen(
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp)) {
                             HoursRow("Обычные", h.regularHours)
-                            HoursRow("Ночные", h.nightHours)
-                            HoursRow("Дорога", h.roadHours)
                             HorizontalDivider(Modifier.padding(vertical = 8.dp))
                             HoursRow("Итого", h.total, bold = true)
                             HoursRow("Норма", h.yearlyNorm)

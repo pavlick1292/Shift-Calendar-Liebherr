@@ -3,7 +3,6 @@ package com.example.shiftcalendar.ui.hours
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shiftcalendar.data.db.entity.CrewMember
-import com.example.shiftcalendar.data.db.entity.HoursCategory
 import com.example.shiftcalendar.data.db.entity.HoursOverride
 import com.example.shiftcalendar.data.db.entity.Person
 import com.example.shiftcalendar.data.db.entity.ShiftPeriod
@@ -30,10 +29,9 @@ private fun currentYear(): Int =
 
 data class MonthHours(
     val month: Int,
-    val regularHours: Double,
-    val nightHours: Double
+    val regularHours: Double
 ) {
-    val total: Double get() = regularHours + nightHours
+    val total: Double get() = regularHours
 }
 
 data class HoursUiState(
@@ -41,7 +39,6 @@ data class HoursUiState(
     val hasMe: Boolean = false,
     val meName: String = "",
     val totalRegular: Double = 0.0,
-    val totalNight: Double = 0.0,
     val totalAll: Double = 0.0,
     val norm: Double = 1972.0,
     val monthly: List<MonthHours> = emptyList(),
@@ -61,11 +58,8 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
 
     private suspend fun compute(year: Int): HoursUiState {
         val allPeople = container.personRepository.observePeople().first()
-        val me: Person? = allPeople.firstOrNull { it.isMe }
-
-        if (me == null) {
-            return HoursUiState(year = year, hasMe = false, isLoading = false)
-        }
+        val me: Person = allPeople.firstOrNull { it.isMe }
+            ?: return HoursUiState(year = year, hasMe = false, isLoading = false)
 
         val crewsWithPeriods = container.crewRepository.observeCrewsWithPeriods().first()
         val periodsByCrew = crewsWithPeriods.associate { it.crew.id to it.periods }
@@ -78,27 +72,19 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
         val overrides = container.overrideRepository.getHoursOverridesForYear(me.id, year)
 
         val wh = calc.calculateForPerson(
-            personId = me.id,
-            year = year,
+            personId = me.id, year = year,
             memberships = memberships,
             periodsByCrew = periodsByCrew,
             hoursOverrides = overrides
         )
 
-        val monthly = computeMonthlyHours(
-            year = year,
-            memberships = memberships,
-            periodsByCrew = periodsByCrew,
-            overrides = overrides,
-            settings = settings
-        )
+        val monthly = computeMonthlyHours(year, memberships, periodsByCrew, overrides, settings)
 
         return HoursUiState(
             year = year,
             hasMe = true,
             meName = me.fullName,
             totalRegular = wh.regularHours,
-            totalNight = wh.nightHours,
             totalAll = wh.total,
             norm = settings.yearlyNorm,
             monthly = monthly,
@@ -113,7 +99,7 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
         overrides: List<HoursOverride>,
         settings: HoursSettings
     ): List<MonthHours> {
-        val result = MutableList(12) { MonthHours(it + 1, 0.0, 0.0) }
+        val result = MutableList(12) { MonthHours(it + 1, 0.0) }
         val overrideByDate = overrides.associateBy { it.date }
 
         val allMyPeriods = memberships
@@ -127,28 +113,17 @@ class HoursViewModel(private val container: AppContainer) : ViewModel() {
             val override = overrideByDate[date]
 
             if (override != null) {
-                when (override.category) {
-                    HoursCategory.NIGHT ->
-                        result[monthIdx] = result[monthIdx].copy(
-                            nightHours = result[monthIdx].nightHours + override.hours
-                        )
-                    else -> result[monthIdx] = result[monthIdx].copy(
-                        regularHours = result[monthIdx].regularHours + override.hours
-                    )
-                }
+                result[monthIdx] = result[monthIdx].copy(
+                    regularHours = result[monthIdx].regularHours + override.hours
+                )
             } else {
                 var done = false
-                for ((member, period) in allMyPeriods) {
+                for ((_, period) in allMyPeriods) {
                     if (done) break
                     if (date >= period.startDate && date <= period.endDate) {
-                        val isNight = period.isNightShift || member.worksAtNight
-                        val h = if (isNight) settings.effectiveNightHours
-                                else settings.effectiveShiftHours
-                        result[monthIdx] = if (isNight) {
-                            result[monthIdx].copy(nightHours = result[monthIdx].nightHours + h)
-                        } else {
-                            result[monthIdx].copy(regularHours = result[monthIdx].regularHours + h)
-                        }
+                        result[monthIdx] = result[monthIdx].copy(
+                            regularHours = result[monthIdx].regularHours + settings.effectiveShiftHours
+                        )
                         done = true
                     }
                 }

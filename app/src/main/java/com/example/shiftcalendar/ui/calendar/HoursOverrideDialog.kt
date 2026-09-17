@@ -120,8 +120,6 @@ fun HoursOverrideDialog(
 
 private fun categoryLabel(c: HoursCategory): String = when (c) {
     HoursCategory.REGULAR -> "Обычные"
-    HoursCategory.NIGHT -> "Ночные"
-    HoursCategory.ROAD -> "Дорога"
     HoursCategory.OVERTIME -> "Переработка"
     HoursCategory.SICK -> "Больничный"
     HoursCategory.VACATION -> "Отгул / отпуск"

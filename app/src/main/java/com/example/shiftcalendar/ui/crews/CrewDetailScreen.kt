@@ -1,5 +1,6 @@
 package com.example.shiftcalendar.ui.crews
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,13 +20,12 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Nightlight
+import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -55,7 +55,11 @@ import androidx.navigation.NavController
 import com.example.shiftcalendar.data.db.dao.PersonWithMembership
 import com.example.shiftcalendar.data.db.entity.ShiftPeriod
 import com.example.shiftcalendar.di.AppContainer
-import com.example.shiftcalendar.ui.theme.ShiftColors
+import com.example.shiftcalendar.export.ShiftPeriodPdfExporter
+import com.example.shiftcalendar.export.ShiftSchedulePdfExporter
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +74,7 @@ fun CrewDetailScreen(
     )
     val state by vm.state.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
+    var showExportDialog by remember { mutableStateOf(false) }
     val tabs = listOf("Вахты", "Люди")
 
     Scaffold(
@@ -79,6 +84,13 @@ fun CrewDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Назад")
+                    }
+                },
+                actions = {
+                    if (tab == 0 && state.periods.isNotEmpty()) {
+                        IconButton(onClick = { showExportDialog = true }) {
+                            Icon(Icons.Outlined.IosShare, "Экспорт")
+                        }
                     }
                 }
             )
@@ -96,6 +108,82 @@ fun CrewDetailScreen(
             }
         }
     }
+
+    if (showExportDialog) {
+        ExportFormatDialog(
+            onDismiss = { showExportDialog = false },
+            onListExport = {
+                showExportDialog = false
+                val file = ShiftPeriodPdfExporter.export(
+                    context = container.appContext,
+                    crewName = state.crew?.name ?: "Состав",
+                    periods = state.periods
+                )
+                ShiftPeriodPdfExporter.share(container.appContext, file)
+            },
+            onScheduleExport = {
+                showExportDialog = false
+                val year = Clock.System.now()
+                    .toLocalDateTime(TimeZone.currentSystemDefault()).year
+                val calendar = container.calendarRepository.get(year)
+                val file = ShiftSchedulePdfExporter.export(
+                    context = container.appContext,
+                    crewName = state.crew?.name ?: "Состав",
+                    periods = state.periods,
+                    members = state.members,
+                    year = year,
+                    calendar = calendar
+                )
+                ShiftSchedulePdfExporter.share(container.appContext, file)
+            }
+        )
+    }
+}
+
+@Composable
+private fun ExportFormatDialog(
+    onDismiss: () -> Unit,
+    onListExport: () -> Unit,
+    onScheduleExport: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Формат PDF") },
+        text = {
+            Column {
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onListExport)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("📋 Список вахт",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Таблица с датами и количеством дней.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onScheduleExport)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("📅 Расписание по месяцам",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text("12 страниц, кто когда заступает. Удобно распечатать.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
+    )
 }
 
 @Composable
@@ -113,11 +201,9 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
         ) {
             if (periods.isEmpty()) {
                 item {
-                    Text(
-                        "Вахт пока нет. Добавьте вручную или сгенерируйте по циклу.",
+                    Text("Вахт пока нет. Добавьте вручную или сгенерируйте по циклу.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             items(periods, key = { it.id }) { p ->
@@ -127,7 +213,6 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
                     onDelete = { vm.deletePeriod(p) }
                 )
             }
-
             if (periods.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
@@ -144,10 +229,7 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
         }
 
         Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.Center
         ) {
             OutlinedButton(onClick = { showAdd = true }) {
@@ -178,8 +260,8 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
     if (showGenerate) {
         GenerateByCycleDialog(
             onDismiss = { showGenerate = false },
-            onGenerate = { start, shift, rest, count, roadB, roadA, night ->
-                vm.generatePeriods(start, shift, rest, count, roadB, roadA, night)
+            onGenerate = { start, shift, rest, count ->
+                vm.generatePeriods(start, shift, rest, count)
                 showGenerate = false
             }
         )
@@ -191,8 +273,8 @@ private fun ShiftsTab(vm: CrewDetailViewModel, periods: List<ShiftPeriod>) {
             lastPeriod = last,
             existingPeriods = periods,
             onDismiss = { showContinue = false },
-            onGenerate = { count, night ->
-                vm.continueCycle(last, count, night, periods)
+            onGenerate = { count ->
+                vm.continueCycle(last, count, periods)
                 showContinue = false
             }
         )
@@ -207,25 +289,14 @@ private fun ShiftPeriodCard(
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "${period.startDate} – ${period.endDate}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                if (period.isNightShift) {
-                    Icon(Icons.Outlined.Nightlight, null,
-                        tint = ShiftColors.NightViolet, modifier = Modifier.size(18.dp))
-                }
-            }
+            Text("${period.startDate} – ${period.endDate}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
-            Text(
-                "Дней: ${period.endDate.toEpochDays() - period.startDate.toEpochDays() + 1}" +
+            Text("Дней: ${period.endDate.toEpochDays() - period.startDate.toEpochDays() + 1}" +
                     (if (period.label.isNotBlank()) " · ${period.label}" else ""),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                 TextButton(onClick = onEdit) { Text("Изменить") }
@@ -243,20 +314,15 @@ private fun ContinueCycleDialog(
     lastPeriod: ShiftPeriod,
     existingPeriods: List<ShiftPeriod>,
     onDismiss: () -> Unit,
-    onGenerate: (count: Int, isNight: Boolean) -> Unit
+    onGenerate: (count: Int) -> Unit
 ) {
     val shiftDays = (lastPeriod.endDate.toEpochDays() - lastPeriod.startDate.toEpochDays() + 1).toInt()
-
-    val previous = existingPeriods
-        .filter { it.endDate < lastPeriod.startDate }
-        .maxByOrNull { it.endDate }
-
+    val previous = existingPeriods.filter { it.endDate < lastPeriod.startDate }.maxByOrNull { it.endDate }
     val restDays = if (previous != null) {
         (lastPeriod.startDate.toEpochDays() - previous.endDate.toEpochDays() - 1).toInt()
     } else 0
 
     var count by remember { mutableStateOf("4") }
-    var night by remember { mutableStateOf(lastPeriod.isNightShift) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -270,7 +336,6 @@ private fun ContinueCycleDialog(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(12.dp))
-
                 OutlinedTextField(
                     value = count,
                     onValueChange = { count = it.filter(Char::isDigit) },
@@ -278,18 +343,12 @@ private fun ContinueCycleDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = night, onCheckedChange = { night = it })
-                    Text("Ночные смены")
-                }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = (count.toIntOrNull() ?: 0) > 0,
-                onClick = { onGenerate(count.toInt(), night) }
+                onClick = { onGenerate(count.toInt()) }
             ) { Text("Добавить") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
@@ -318,11 +377,7 @@ private fun PeopleTab(
                 }
             }
             items(members, key = { it.person.id }) { m ->
-                MemberRow(
-                    m = m,
-                    onToggleNight = { vm.toggleNight(m.person.id, m.worksAtNight) },
-                    onRemove = { vm.removeMember(m.person.id) }
-                )
+                MemberRow(m = m, onRemove = { vm.removeMember(m.person.id) })
             }
         }
 
@@ -339,17 +394,13 @@ private fun PeopleTab(
             container = container,
             existingIds = members.map { it.person.id }.toSet(),
             onDismiss = { showAdd = false },
-            onAdd = { personId, night -> vm.addMember(personId, night); showAdd = false }
+            onAdd = { personId -> vm.addMember(personId); showAdd = false }
         )
     }
 }
 
 @Composable
-private fun MemberRow(
-    m: PersonWithMembership,
-    onToggleNight: () -> Unit,
-    onRemove: () -> Unit
-) {
+private fun MemberRow(m: PersonWithMembership, onRemove: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -363,11 +414,6 @@ private fun MemberRow(
                     Text(m.person.fullName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold)
-                    if (m.worksAtNight) {
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Outlined.Nightlight, null,
-                            tint = ShiftColors.NightViolet, modifier = Modifier.size(16.dp))
-                    }
                 }
                 Text(m.person.profession.titleRu,
                     style = MaterialTheme.typography.labelSmall,
@@ -375,14 +421,6 @@ private fun MemberRow(
                 Text("🏠 ${m.person.residence.titleRu}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            IconButton(onClick = onToggleNight) {
-                Icon(
-                    Icons.Outlined.Nightlight,
-                    "Ночная смена",
-                    tint = if (m.worksAtNight) ShiftColors.NightViolet
-                           else MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Outlined.Close, "Убрать", tint = MaterialTheme.colorScheme.error)

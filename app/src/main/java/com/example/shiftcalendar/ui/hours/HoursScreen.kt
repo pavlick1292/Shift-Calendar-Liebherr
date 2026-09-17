@@ -147,10 +147,7 @@ private fun SummaryCard(state: HoursUiState) {
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCell("Обычные", state.totalRegular, ShiftColors.WorkBlue, Modifier.weight(1f))
-                StatCell("Ночные", state.totalNight, ShiftColors.NightViolet, Modifier.weight(1f))
-            }
+            StatCell("Обычные", state.totalRegular, ShiftColors.WorkBlue)
             if (state.totalAll > state.norm) {
                 val overText = String.format(Locale.US, "%.0f", state.totalAll - state.norm)
                 Spacer(Modifier.height(8.dp))
@@ -163,16 +160,14 @@ private fun SummaryCard(state: HoursUiState) {
 }
 
 @Composable
-private fun StatCell(label: String, value: Double, color: Color, modifier: Modifier = Modifier) {
+private fun StatCell(label: String, value: Double, color: Color) {
     val valueText = String.format(Locale.US, "%.0f", value)
-    Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).clip(MaterialTheme.shapes.extraSmall).background(color))
-            Spacer(Modifier.width(6.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.height(2.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(8.dp).clip(MaterialTheme.shapes.extraSmall).background(color))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(6.dp))
         Text("$valueText ч",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold)
@@ -187,42 +182,21 @@ private fun MonthRow(m: MonthHours) {
     )[m.month - 1]
 
     val totalText = String.format(Locale.US, "%.0f", m.total)
-    val regularText = String.format(Locale.US, "%.0f", m.regularHours)
-    val nightText = String.format(Locale.US, "%.0f", m.nightHours)
 
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(monthName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f))
-                Text("$totalText ч",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (m.total > 0) ShiftColors.WorkBlue
-                            else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (m.total > 0) {
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SmallStat("Обычные", regularText, ShiftColors.WorkBlue)
-                    if (m.nightHours > 0) {
-                        SmallStat("Ночные", nightText, ShiftColors.NightViolet)
-                    }
-                }
-            }
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(monthName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f))
+            Text("$totalText ч",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (m.total > 0) ShiftColors.WorkBlue
+                        else MaterialTheme.colorScheme.onSurfaceVariant)
         }
-    }
-}
-
-@Composable
-private fun SmallStat(label: String, value: String, color: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).clip(MaterialTheme.shapes.extraSmall).background(color))
-        Spacer(Modifier.width(4.dp))
-        Text("$label: $value",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -29,15 +29,14 @@ class PersonRepository(
 
     suspend fun deletePerson(person: Person) = personDao.delete(person)
 
-    suspend fun addToCrew(personId: Long, crewId: Long, worksAtNight: Boolean = false) {
-        memberDao.upsert(
-            CrewMember(personId = personId, crewId = crewId, worksAtNight = worksAtNight)
-        )
+    suspend fun addToCrew(personId: Long, crewId: Long) {
+        memberDao.upsert(CrewMember(personId = personId, crewId = crewId))
     }
 
     suspend fun updateMembership(member: CrewMember) = memberDao.upsert(member)
 
-    suspend fun removeFromCrew(personId: Long, crewId: Long) = memberDao.deleteByIds(personId, crewId)
+    suspend fun removeFromCrew(personId: Long, crewId: Long) =
+        memberDao.deleteByIds(personId, crewId)
 
     suspend fun getMembershipsOfPerson(personId: Long): List<CrewMember> =
         memberDao.getByPerson(personId)

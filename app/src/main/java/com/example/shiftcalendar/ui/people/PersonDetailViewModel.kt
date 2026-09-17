@@ -19,7 +19,6 @@ import kotlinx.datetime.toLocalDateTime
 data class PersonDetailState(
     val person: Person? = null,
     val crewNames: List<Pair<Long, String>> = emptyList(),
-    val nightInCrew: Map<Long, Boolean> = emptyMap(),
     val hours: WorkHours? = null,
     val isLoading: Boolean = true
 )
@@ -36,7 +35,6 @@ class PersonDetailViewModel(
         val crewNames = memberships.mapNotNull { m ->
             crews.firstOrNull { it.id == m.crewId }?.let { it.id to it.name }
         }
-        val nightMap = memberships.associate { it.crewId to it.worksAtNight }
 
         val year = Clock.System.now()
             .toLocalDateTime(TimeZone.currentSystemDefault()).year
@@ -59,10 +57,8 @@ class PersonDetailViewModel(
         emit(PersonDetailState(
             person = person,
             crewNames = crewNames,
-            nightInCrew = nightMap,
             hours = hours,
             isLoading = false
         ))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PersonDetailState())
 }
-

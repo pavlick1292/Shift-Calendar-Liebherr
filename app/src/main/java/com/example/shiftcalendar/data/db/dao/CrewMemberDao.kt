@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.Flow
 
 data class PersonWithMembership(
     @Embedded val person: Person,
-    val worksAtNight: Boolean,
     val roleInCrew: String
 )
 
@@ -29,7 +28,7 @@ interface CrewMemberDao {
     suspend fun getByPerson(personId: Long): List<CrewMember>
 
     @Query("""
-        SELECT p.*, cm.worksAtNight AS worksAtNight, cm.roleInCrew AS roleInCrew
+        SELECT p.*, cm.roleInCrew AS roleInCrew
         FROM persons p
         INNER JOIN crew_members cm ON cm.personId = p.id
         WHERE cm.crewId = :crewId

@@ -15,15 +15,10 @@ class ShiftCalculator(private val calendar: ProductionCalendar) {
         memberships: List<CrewMember> = emptyList()
     ): DayStatus {
         val active = mutableListOf<ShiftPeriod>()
-        var night = false
 
         for (p in periods) {
             if (date >= p.startDate && date <= p.endDate) {
                 active += p
-                val memberNight = memberships
-                    .firstOrNull { it.crewId == p.crewId }
-                    ?.worksAtNight == true
-                if (p.isNightShift || memberNight) night = true
             }
         }
 
@@ -37,8 +32,7 @@ class ShiftCalculator(private val calendar: ProductionCalendar) {
             date = date,
             calendarType = calendarType,
             activePeriods = active,
-            roadPeriods = emptyList(),
-            isNight = night
+            roadPeriods = emptyList()
         )
     }
 }

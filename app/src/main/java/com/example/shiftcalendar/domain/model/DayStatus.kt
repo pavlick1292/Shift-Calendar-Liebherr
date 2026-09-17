@@ -9,8 +9,7 @@ data class DayStatus(
     val date: LocalDate,
     val calendarType: CalendarType,
     val activePeriods: List<ShiftPeriod>,
-    val roadPeriods: List<ShiftPeriod>,
-    val isNight: Boolean
+    val roadPeriods: List<ShiftPeriod>
 ) {
     val isWorking: Boolean get() = activePeriods.isNotEmpty()
     val isOnRoad: Boolean get() = roadPeriods.isNotEmpty()

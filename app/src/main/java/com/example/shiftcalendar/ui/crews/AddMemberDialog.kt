@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -33,14 +32,13 @@ fun AddMemberDialog(
     container: AppContainer,
     existingIds: Set<Long>,
     onDismiss: () -> Unit,
-    onAdd: (personId: Long, worksAtNight: Boolean) -> Unit
+    onAdd: (personId: Long) -> Unit
 ) {
     val all by container.personRepository.observePeople()
         .collectAsStateWithLifecycle(initialValue = emptyList())
 
     val available = all.filter { it.id !in existingIds }
     var selected by remember { mutableStateOf<Long?>(null) }
-    var night by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -76,17 +74,13 @@ fun AddMemberDialog(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = night, onCheckedChange = { night = it })
-                        Text("Работает ночью")
-                    }
                 }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = selected != null,
-                onClick = { selected?.let { onAdd(it, night) } }
+                onClick = { selected?.let { onAdd(it) } }
             ) { Text("Добавить") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }

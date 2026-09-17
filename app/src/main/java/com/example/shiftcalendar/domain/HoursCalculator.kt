@@ -22,7 +22,6 @@ class HoursCalculator(
         hoursOverrides: List<HoursOverride>
     ): WorkHours {
         var regular = 0.0
-        var night = 0.0
 
         val overrideByDate = hoursOverrides.associateBy { it.date }
 
@@ -32,10 +31,7 @@ class HoursCalculator(
         while (date <= end) {
             val override = overrideByDate[date]
             if (override != null) {
-                when (override.category) {
-                    HoursCategory.NIGHT -> night += override.hours
-                    else -> regular += override.hours
-                }
+                regular += override.hours
             } else {
                 var dayAdded = false
                 for (m in memberships) {
@@ -43,9 +39,7 @@ class HoursCalculator(
                     val status = shiftCalc.dayStatusFor(date, periods, listOf(m))
 
                     if (status.isWorking && !dayAdded) {
-                        val h = if (status.isNight) settings.effectiveNightHours
-                                else settings.effectiveShiftHours
-                        if (status.isNight) night += h else regular += h
+                        regular += settings.effectiveShiftHours
                         dayAdded = true
                     }
                 }
@@ -57,8 +51,6 @@ class HoursCalculator(
             personId = personId,
             year = year,
             regularHours = regular,
-            nightHours = night,
-            roadHours = 0.0,
             yearlyNorm = settings.yearlyNorm
         )
     }

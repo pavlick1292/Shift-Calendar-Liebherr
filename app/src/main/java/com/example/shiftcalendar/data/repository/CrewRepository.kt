@@ -62,10 +62,7 @@ class CrewRepository(
         startDate: LocalDate,
         shiftDays: Int,
         restDays: Int,
-        count: Int,
-        roadBefore: Int,
-        roadAfter: Int,
-        isNight: Boolean
+        count: Int
     ): List<ShiftPeriod> {
         val result = mutableListOf<ShiftPeriod>()
         var cursor = startDate
@@ -75,9 +72,6 @@ class CrewRepository(
                 crewId = crewId,
                 startDate = cursor,
                 endDate = end,
-                roadDaysBefore = roadBefore,
-                roadDaysAfter = roadAfter,
-                isNightShift = isNight,
                 label = "Вахта №${i + 1}"
             )
             cursor = end.plus(DatePeriod(days = restDays + 1))

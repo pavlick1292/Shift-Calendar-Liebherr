@@ -6,13 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Nightlight
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -24,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.example.shiftcalendar.data.db.entity.ShiftPeriod
 import com.example.shiftcalendar.domain.model.CalendarType
 import com.example.shiftcalendar.domain.model.DayStatus
-import com.example.shiftcalendar.ui.theme.ShiftColors
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,19 +48,7 @@ fun DayBottomSheet(
                 Spacer(Modifier.height(6.dp))
                 status.activePeriods.forEach { p ->
                     PeriodRow(p, crewNameById[p.crewId] ?: "?",
-                        memberNamesByCrew[p.crewId].orEmpty(), night = status.isNight)
-                }
-            }
-
-            if (status.roadPeriods.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Text("В дороге",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(6.dp))
-                status.roadPeriods.forEach { p ->
-                    PeriodRow(p, crewNameById[p.crewId] ?: "?",
-                        memberNamesByCrew[p.crewId].orEmpty(), night = false)
+                        memberNamesByCrew[p.crewId].orEmpty())
                 }
             }
 
@@ -81,21 +63,10 @@ fun DayBottomSheet(
 }
 
 @Composable
-private fun PeriodRow(
-    period: ShiftPeriod,
-    crewName: String,
-    members: List<String>,
-    night: Boolean
-) {
+private fun PeriodRow(period: ShiftPeriod, crewName: String, members: List<String>) {
     Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (night) {
-                    Icon(Icons.Outlined.Nightlight, null,
-                        tint = ShiftColors.NightViolet,
-                        modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                }
                 Text(crewName, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold)
             }

@@ -1,14 +1,12 @@
 package com.example.shiftcalendar.ui.crews
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.shiftcalendar.data.db.entity.ShiftPeriod
@@ -36,13 +33,8 @@ fun ShiftPeriodDialog(
     onDismiss: () -> Unit,
     onSave: (ShiftPeriod) -> Unit
 ) {
-    var startDate by remember {
-        mutableStateOf(period?.startDate ?: LocalDate(2025, 1, 1))
-    }
-    var endDate by remember {
-        mutableStateOf(period?.endDate ?: LocalDate(2025, 1, 30))
-    }
-    var night by remember { mutableStateOf(period?.isNightShift ?: false) }
+    var startDate by remember { mutableStateOf(period?.startDate ?: LocalDate(2025, 1, 1)) }
+    var endDate by remember { mutableStateOf(period?.endDate ?: LocalDate(2025, 1, 30)) }
     var label by remember { mutableStateOf(period?.label ?: "") }
 
     var showStartPicker by remember { mutableStateOf(false) }
@@ -74,29 +66,19 @@ fun ShiftPeriodDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = night, onCheckedChange = { night = it })
-                    Text("Ночная смена")
-                }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = valid,
                 onClick = {
-                    onSave(
-                        ShiftPeriod(
-                            id = period?.id ?: 0,
-                            crewId = period?.crewId ?: 0,
-                            startDate = startDate,
-                            endDate = endDate,
-                            roadDaysBefore = 0,
-                            roadDaysAfter = 0,
-                            isNightShift = night,
-                            label = label
-                        )
-                    )
+                    onSave(ShiftPeriod(
+                        id = period?.id ?: 0,
+                        crewId = period?.crewId ?: 0,
+                        startDate = startDate,
+                        endDate = endDate,
+                        label = label
+                    ))
                 }
             ) { Text("Сохранить") }
         },
@@ -110,7 +92,6 @@ fun ShiftPeriodDialog(
             onPicked = { startDate = it; showStartPicker = false }
         )
     }
-
     if (showEndPicker) {
         SimpleDatePickerDialog(
             initial = endDate,
@@ -121,11 +102,7 @@ fun ShiftPeriodDialog(
 }
 
 @Composable
-internal fun DateFieldRu(
-    label: String,
-    date: LocalDate,
-    onPick: () -> Unit
-) {
+internal fun DateFieldRu(label: String, date: LocalDate, onPick: () -> Unit) {
     OutlinedTextField(
         value = date.formatRu(),
         onValueChange = {},
@@ -155,14 +132,10 @@ internal fun SimpleDatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {
-                state.selectedDateMillis?.let { millis ->
-                    onPicked(millisToLocalDate(millis))
-                } ?: onDismiss()
+                state.selectedDateMillis?.let { onPicked(millisToLocalDate(it)) } ?: onDismiss()
             }) { Text("OK") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
     ) {
         DatePicker(state = state)
     }
@@ -174,10 +147,8 @@ internal fun LocalDate.formatRu(): String {
     return "$d.$m.$year"
 }
 
-internal fun localDateToMillis(date: LocalDate): Long {
-    return date.toEpochDays().toLong() * 86_400_000L
-}
+internal fun localDateToMillis(date: LocalDate): Long =
+    date.toEpochDays().toLong() * 86_400_000L
 
-internal fun millisToLocalDate(millis: Long): LocalDate {
-    return LocalDate.fromEpochDays((millis / 86_400_000L).toInt())
-}
+internal fun millisToLocalDate(millis: Long): LocalDate =
+    LocalDate.fromEpochDays((millis / 86_400_000L).toInt())

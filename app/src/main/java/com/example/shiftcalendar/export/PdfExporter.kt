@@ -27,8 +27,8 @@ object PdfExporter {
         canvas.drawText("Учёт часов за $year", 40f, y, titlePaint)
         y += 30f
 
-        val cols = listOf(40f, 220f, 320f, 390f, 460f, 530f)
-        val headers = listOf("ФИО", "Профессия", "Обычн.", "Ночные", "Дорога", "Итого")
+        val cols = listOf(40f, 220f, 360f, 430f, 500f)
+        val headers = listOf("ФИО", "Профессия", "Обычные", "Итого", "Норма")
         headers.forEachIndexed { i, h -> canvas.drawText(h, cols[i], y, headerPaint) }
         y += 6f
         canvas.drawLine(40f, y, 555f, y, cellPaint)
@@ -39,9 +39,8 @@ object PdfExporter {
             canvas.drawText(p.fullName.take(30), cols[0], y, cellPaint)
             canvas.drawText(p.profession.titleRu.take(18), cols[1], y, cellPaint)
             canvas.drawText(fmt(h.regularHours), cols[2], y, cellPaint)
-            canvas.drawText(fmt(h.nightHours), cols[3], y, cellPaint)
-            canvas.drawText(fmt(h.roadHours), cols[4], y, cellPaint)
-            canvas.drawText(fmt(h.total), cols[5], y, cellPaint)
+            canvas.drawText(fmt(h.total), cols[3], y, cellPaint)
+            canvas.drawText(fmt(h.yearlyNorm), cols[4], y, cellPaint)
             y += 18f
         }
 
@@ -63,9 +62,7 @@ object PdfExporter {
 
     fun share(context: Context, file: File) {
         val uri = FileProvider.getUriForFile(
-            context,
-            context.packageName + ".fileprovider",
-            file
+            context, context.packageName + ".fileprovider", file
         )
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"
@@ -80,5 +77,5 @@ object PdfExporter {
         context.startActivity(chooser)
     }
 
-    private fun fmt(v: Double) = String.format(Locale.US, "%.1f", v)
+    private fun fmt(v: Double): String = String.format(Locale.US, "%.1f", v)
 }

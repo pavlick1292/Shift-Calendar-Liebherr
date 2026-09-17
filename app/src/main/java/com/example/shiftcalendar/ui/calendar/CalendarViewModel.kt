@@ -23,8 +23,7 @@ data class ActiveCrew(
     val crewId: Long,
     val crewName: String,
     val colorHex: String,
-    val iconType: String,
-    val isNight: Boolean
+    val iconType: String
 )
 
 data class DayStatus(
@@ -71,25 +70,10 @@ class CalendarViewModel(private val container: AppContainer) : ViewModel() {
 
         val isActive = cwp.periods.any { date >= it.startDate && date <= it.endDate }
         val activeCrews = if (isActive) {
-            listOf(
-                ActiveCrew(
-                    crewId = cwp.crew.id,
-                    crewName = cwp.crew.name,
-                    colorHex = cwp.crew.colorHex,
-                    iconType = cwp.crew.iconType,
-                    isNight = cwp.periods.any { p ->
-                        date >= p.startDate && date <= p.endDate && p.isNightShift
-                    }
-                )
-            )
+            listOf(ActiveCrew(cwp.crew.id, cwp.crew.name, cwp.crew.colorHex, cwp.crew.iconType))
         } else emptyList()
 
-        return DayStatus(
-            date = date,
-            calendarType = typeFor(date, calendar),
-            activeCrews = activeCrews,
-            totalActiveCount = activeCrews.size
-        )
+        return DayStatus(date, typeFor(date, calendar), activeCrews, activeCrews.size)
     }
 
     fun dayStatusSummary(date: LocalDate): DayStatus {
@@ -100,22 +84,11 @@ class CalendarViewModel(private val container: AppContainer) : ViewModel() {
         for (cwp in state.crews) {
             val periods = cwp.periods.filter { date >= it.startDate && date <= it.endDate }
             if (periods.isNotEmpty()) {
-                active += ActiveCrew(
-                    crewId = cwp.crew.id,
-                    crewName = cwp.crew.name,
-                    colorHex = cwp.crew.colorHex,
-                    iconType = cwp.crew.iconType,
-                    isNight = periods.any { it.isNightShift }
-                )
+                active += ActiveCrew(cwp.crew.id, cwp.crew.name, cwp.crew.colorHex, cwp.crew.iconType)
             }
         }
 
-        return DayStatus(
-            date = date,
-            calendarType = typeFor(date, calendar),
-            activeCrews = active,
-            totalActiveCount = active.size
-        )
+        return DayStatus(date, typeFor(date, calendar), active, active.size)
     }
 
     private fun typeFor(date: LocalDate, calendar: ProductionCalendar): CalendarType = when {
@@ -125,9 +98,6 @@ class CalendarViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private fun emptyStatus(date: LocalDate, calendar: ProductionCalendar) = DayStatus(
-        date = date,
-        calendarType = typeFor(date, calendar),
-        activeCrews = emptyList(),
-        totalActiveCount = 0
+        date, typeFor(date, calendar), emptyList(), 0
     )
 }

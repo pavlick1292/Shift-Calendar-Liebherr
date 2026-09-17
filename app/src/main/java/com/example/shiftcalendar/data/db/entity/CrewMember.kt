@@ -27,7 +27,6 @@ import kotlinx.datetime.LocalDate
 data class CrewMember(
     val personId: Long,
     val crewId: Long,
-    val worksAtNight: Boolean = false,
     val roleInCrew: String = "",
     val joinedAt: LocalDate? = null
 )

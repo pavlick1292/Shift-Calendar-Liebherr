@@ -23,8 +23,7 @@ data class ShiftPeriod(
     val crewId: Long,
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val roadDaysBefore: Int = 1,
-    val roadDaysAfter: Int = 1,
-    val isNightShift: Boolean = false,
+    val roadDaysBefore: Int = 0,
+    val roadDaysAfter: Int = 0,
     val label: String = ""
 )

@@ -28,8 +28,6 @@ data class HoursOverride(
 
 enum class HoursCategory {
     REGULAR,
-    NIGHT,
-    ROAD,
     OVERTIME,
     SICK,
     VACATION

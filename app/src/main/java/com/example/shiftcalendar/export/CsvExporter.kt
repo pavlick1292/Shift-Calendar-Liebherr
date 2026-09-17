@@ -13,10 +13,11 @@ object CsvExporter {
 
     fun export(context: Context, year: Int, rows: List<Pair<Person, WorkHours>>): File {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
-val file = File(dir, "hours_${year}_${System.currentTimeMillis()}.csv")
+        val file = File(dir, "hours_${year}_${System.currentTimeMillis()}.csv")
+
         FileOutputStream(file).bufferedWriter(Charsets.UTF_8).use { w ->
             w.write("\uFEFF")
-            w.write("ФИО;Профессия;Проживание;Обычные;Ночные;Дорога;Ручные;Итого;Норма;Переработка")
+            w.write("ФИО;Профессия;Проживание;Обычные;Итого;Норма;Переработка")
             w.newLine()
             rows.forEach { (p, h) ->
                 w.write(listOf(
@@ -24,9 +25,6 @@ val file = File(dir, "hours_${year}_${System.currentTimeMillis()}.csv")
                     p.profession.titleRu,
                     p.residence.titleRu,
                     fmt(h.regularHours),
-                    fmt(h.nightHours),
-                    fmt(h.roadHours),
-                    fmt(h.manualAdjustment),
                     fmt(h.total),
                     fmt(h.yearlyNorm),
                     fmt(h.overtime)
@@ -39,22 +37,20 @@ val file = File(dir, "hours_${year}_${System.currentTimeMillis()}.csv")
 
     fun share(context: Context, file: File) {
         val uri = FileProvider.getUriForFile(
-            context,
-            context.packageName + ".fileprovider",
-            file
+            context, context.packageName + ".fileprovider", file
         )
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/csv"
             putExtra(Intent.EXTRA_STREAM, uri)
-putExtra(Intent.EXTRA_TITLE, file.name)
-putExtra(Intent.EXTRA_SUBJECT, file.name)
+            putExtra(Intent.EXTRA_TITLE, file.name)
+            putExtra(Intent.EXTRA_SUBJECT, file.name)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-val chooser = Intent.createChooser(intent, "Отправить CSV").apply {
-    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-}
-context.startActivity(chooser)    }
+        val chooser = Intent.createChooser(intent, "Отправить CSV").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(chooser)
+    }
 
     private fun fmt(v: Double): String = String.format(Locale.US, "%.1f", v)
 }
-

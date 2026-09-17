@@ -25,7 +25,7 @@ import com.example.shiftcalendar.data.db.entity.ShiftPeriod
         DayOverride::class,
         HoursOverride::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
